@@ -2,7 +2,7 @@ terraform {
   # Credentials come from AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.
   backend "s3" {
     bucket = "tfstate"
-    key    = "homelab/vault/prod.tfstate"
+    key    = "0xc0/vault/prod.tfstate"
     region = "us-east-1"
     endpoints = {
       s3 = "https://s3.0xc0.cc"
