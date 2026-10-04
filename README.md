@@ -11,7 +11,7 @@ policies/            one ACL policy per file, named after it
 scripts/             tofu (local runs, credentials from Vault)
 ```
 
-State: `homelab/vault/prod.tfstate` in RustFS, whose credentials come from
+State: `0xc0/vault/prod.tfstate` in RustFS, whose credentials come from
 Vault itself (`ci/shared/rustfs`).
 
 ## Secrets: the standard
