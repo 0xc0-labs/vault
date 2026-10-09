@@ -91,6 +91,11 @@ kubernetes_roles = {
     service_accounts = ["vault-secrets"]
     policies         = ["mariadb"]
   }
+  "postgres" = {
+    namespace        = "postgres"
+    service_accounts = ["vault-secrets"]
+    policies         = ["postgres"]
+  }
   # Its policy reads only apps/<the login's namespace>/*, so a new
   # application needs nothing here.
   "apps" = {
