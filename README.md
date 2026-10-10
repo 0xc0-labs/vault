@@ -6,7 +6,7 @@ roles, policies, secret engines. Vault itself is deployed by `gitops`
 
 ```
 environments/prod/   the root: only calls modules
-modules/             github-jwt-auth, kubernetes-auth, policy, kv
+modules/             github-jwt-auth, kubernetes-auth, approle-auth, policy, kv, transit
 policies/            one ACL policy per file, named after it
 scripts/             tofu (local runs, credentials from Vault)
 ```
@@ -23,11 +23,12 @@ for one never reaches another:
 |---|---|---|
 | `platform/` | the cluster's shared services | Vault Secrets Operator, per namespace |
 | `apps/` | the applications | Vault Secrets Operator, per namespace |
-| `ci/` | what the pipelines use (Proxmox, Cloudflare, RustFS, the runners' App) | each repo's CI jobs, over JWT |
+| `ci/` | what the pipelines use (Proxmox, Cloudflare, RustFS, the runners' AppRole secret ID) | each repo's CI jobs, over JWT |
 | `ops/` | what only people use: UI logins, passwords in clear | the operator; **no machine has a policy on it** |
 
 There is no dynamic engine (`pki/`, `database/`); one is added when something
-needs it.
+needs it. Keys that must never leave Vault live in `transit/` (Transit,
+below), not in a KV engine.
 
 - **People or machines.** A secret a machine reads lives in `platform/`,
   `apps/` or `ci/`. One only a person uses lives in `ops/`, and no machine is
@@ -181,6 +182,80 @@ binding and the operator's approval of every run from `main`.
 
 The CI VMs reach Vault at `https://vault.int.0xc0.cc`, the internal VIP,
 through an `/etc/hosts` entry (infrastructure, the `github_runner` role).
+
+## Transit: keys that never leave Vault
+
+`transit/` holds keys Vault signs or encrypts with, non-exportable: whoever
+uses one gets a signature, never the key. OpenTofu creates the engine only.
+A key someone else issued is imported by the operator, like any other secret
+value.
+
+| Key | Type | Used by | Policy |
+|---|---|---|---|
+| `github-runner-app` | `rsa-2048` | the CI VMs' JIT step, which signs the runner App's JWT before every job (infrastructure, the `github_runner` role) | `github-runner`: sign with it, SHA-256, nothing else |
+
+Importing the runner App's key, from the laptop over WARP: `vault transit
+import` takes it as base64 PKCS#8 DER. It goes from its source through a pipe
+and process substitution, never onto disk or the screen:
+
+```sh
+export VAULT_ADDR=https://vault.int.0xc0.cc
+mise exec -- vault login -no-print
+
+# From a .pem downloaded from the App's settings, deleted right after. From
+# the copy in ci/infrastructure/runner-app while it still exists, -in takes
+# <(mise exec -- vault kv get -mount=ci -field=private_key infrastructure/runner-app)
+# instead of the file.
+mise exec -- vault transit import transit/keys/github-runner-app \
+  @<(openssl pkcs8 -topk8 -nocrypt -outform DER -in ~/Downloads/<app>.private-key.pem | openssl base64 -A) \
+  type=rsa-2048
+rm ~/Downloads/<app>.private-key.pem
+
+# Check it: type, not exportable, no deletion. Reading a Transit key shows
+# only its public half.
+mise exec -- vault read -format=json transit/keys/github-runner-app \
+  | jq '.data | {type, exportable, deletion_allowed, latest_version}'
+
+rm -f ~/.vault-token
+```
+
+A new key for the App goes in as a new version of the same key
+(`transit/keys/github-runner-app/import_version`, same input); the JIT step
+signs with the latest. The old one is then deleted in the App's settings.
+
+## AppRole: machines outside the cluster and CI
+
+A machine with no service account and no OIDC token logs in with an AppRole:
+a role ID, which is the role's name and goes in its configuration, and a
+secret ID, which is a secret. The operator writes the secret ID into `ci/`,
+and the pipeline that configures the machine puts it there, root-only. A
+login gets a batch token that lives `token_ttl` seconds.
+
+| Role | Machine | Policy | Secret ID in |
+|---|---|---|---|
+| `github-runner` | the CI VMs' JIT step, as root, before every job | `github-runner` | `ci/infrastructure/runner-approle`, key `secret_id` |
+
+The secret ID is not bound to the machine's address: Vault sees every
+connection from Traefik. What a stolen one gives is what its policy says,
+only from inside the network, until it is revoked here.
+
+Writing it, or a new one, from the laptop over WARP, straight from Vault into
+`ci/`:
+
+```sh
+mise exec -- vault write -f -field=secret_id auth/approle/role/github-runner/secret-id \
+  | tr -d '\n' | mise exec -- vault kv put -mount=ci infrastructure/runner-approle secret_id=-
+mise exec -- vault kv metadata put -mount=ci \
+  -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" infrastructure/runner-approle
+```
+
+Infrastructure's pipeline carries it to the CI VMs on its next run of
+`playbooks/vm-ci.yml`. Then the old one, if any, is destroyed by its accessor
+(`vault list auth/approle/role/github-runner/secret-id` lists them):
+
+```sh
+mise exec -- vault write auth/approle/role/github-runner/secret-id-accessor/destroy secret_id_accessor=<old>
+```
 
 ## Bootstrap, once: the first apply is local
 

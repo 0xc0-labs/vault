@@ -34,3 +34,17 @@ module "kv" {
   path        = each.key
   description = each.value
 }
+
+# Keys that never leave Vault (README.md, Transit).
+module "transit" {
+  source = "../../modules/transit"
+
+  description = "Keys that never leave Vault: it signs and encrypts with them"
+}
+
+# Machines outside the cluster and CI (README.md, AppRole).
+module "approle_auth" {
+  source = "../../modules/approle-auth"
+
+  roles = var.approle_roles
+}
