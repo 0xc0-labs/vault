@@ -12,6 +12,15 @@ path "auth/jwt/*" {
 path "auth/kubernetes/*" {
   capabilities = ["read", "list"]
 }
+# AppRole: each role's configuration and its role ID, which is not secret.
+# Never its secret IDs: no list of their accessors, and generating or looking
+# one up takes update.
+path "auth/approle/role/+" {
+  capabilities = ["read"]
+}
+path "auth/approle/role/+/role-id" {
+  capabilities = ["read"]
+}
 
 path "sys/mounts" {
   capabilities = ["read"]
