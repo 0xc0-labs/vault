@@ -175,6 +175,11 @@ A plan and a real run read the same secrets, so one role serves both: what
 changes infrastructure still waits for the `production` environment's
 approval, not for Vault.
 
+A PR's plan refreshes every resource with `terraform-plan`, and fails on one
+that policy cannot read: an auth method or engine added here brings its read
+path in `policies/terraform-plan.hcl` in the same PR. Its own plan passes
+regardless, before the resource exists, so the gap shows only in the next PR.
+
 Neither of this repo's own policies grants a stored secret, but for its
 state's (`ci/shared/rustfs`). `terraform` can still rewrite any policy,
 its own included, so it is effectively an admin: what guards it is its role's
