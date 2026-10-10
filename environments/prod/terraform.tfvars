@@ -104,3 +104,14 @@ kubernetes_roles = {
     policies         = ["apps"]
   }
 }
+
+# Machines outside the cluster and CI (operator decision, 2026-10-10). The role
+# ID is the role's name; the operator writes the secret ID.
+approle_roles = {
+  # The CI VMs' JIT step: Vault signs the runner App's JWT, so the App's key
+  # never sits on them (infrastructure, the github_runner role).
+  "github-runner" = {
+    policies  = ["github-runner"]
+    token_ttl = 60
+  }
+}

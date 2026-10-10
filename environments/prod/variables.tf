@@ -30,3 +30,12 @@ variable "kv_engines" {
   description = "KV v2 secrets engines, by mount path, each with what it holds."
   type        = map(string)
 }
+
+variable "approle_roles" {
+  description = "AppRole roles, by name (also their role ID): the policies a login gets, and its token's TTL in seconds."
+  type = map(object({
+    policies  = list(string)
+    token_ttl = optional(number, 60)
+  }))
+  default = {}
+}
