@@ -98,6 +98,7 @@ cluster or a repo:
 | Proxmox `root@pam` | restoring the VMs, Vault's among them |
 | RustFS admin | the OpenTofu state, before any pipeline runs |
 | The Cloudflare and GitHub accounts, and their 2FA | WARP, the tunnels and the pipelines all depend on them |
+| The Resend account, and its 2FA | it issues the applications' email keys: a leaked one is revoked there, with or without Vault |
 
 The section below, "When the cluster or Vault is down", is the order to use
 them in.
@@ -305,7 +306,8 @@ exchanges it for an installation token. The cluster pulls the private image
 with `apps/shared/ghcr-pull`, and staging runs in its own namespace with its
 own `apps/<app>-staging/` path. Its files live in Cloudflare R2, one bucket
 per environment (`<namespace>-<purpose>`), read with a token scoped to that
-bucket at `apps/<namespace>/media`.
+bucket at `apps/<namespace>/media`. It sends email through Resend, with a key
+per environment at `apps/<namespace>/email`.
 
 After the apply that adds them, from the laptop over WARP, every value on
 stdin as Writing or rotating a secret says. Each `kv put` below creates its
@@ -401,6 +403,43 @@ path; once it exists, a key changes with `kv patch`, never `kv put`:
    beside the application, never here. A new token changes both keys at once,
    so it goes in with the same `kv put`, which rewrites the path whole; the
    old token is then deleted in Cloudflare.
+
+6. **Each environment's email**, `apps/<namespace>/email`: a Resend API key,
+   which the application sends with over SMTP. Once `0xc0.cc` is verified in
+   Resend:
+
+   | Path | Keys |
+   |---|---|
+   | `apps/payload/email` | `api_key` |
+   | `apps/payload-staging/email` | `api_key`, and `redirect_to` (staging alone) |
+
+   In Resend's dashboard, API Keys: one key per environment, with "Sending
+   access" only, restricted to the domain `0xc0.cc`. Resend shows it once.
+   `redirect_to` is the inbox every staging message goes to instead of its
+   recipient, so staging never mails a real person. Each value goes in with
+   `read -rs` and process substitution, as for the bucket. The `apps` policy
+   already reads them, under `apps/<namespace>/*`.
+
+   ```sh
+   # Prod: the API key, Enter.
+   read -rs key && mise exec -- vault kv put -mount=apps payload/email \
+     api_key=@<(printf '%s' "$key") ; unset key
+   mise exec -- vault kv metadata put -mount=apps \
+     -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" payload/email
+
+   # Staging: its own API key, Enter, then the redirect inbox, Enter.
+   read -rs key && read -rs to && mise exec -- vault kv put -mount=apps payload-staging/email \
+     api_key=@<(printf '%s' "$key") redirect_to=@<(printf '%s' "$to") ; unset key to
+   mise exec -- vault kv metadata put -mount=apps \
+     -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" payload-staging/email
+
+   rm -f ~/.vault-token
+   ```
+
+   SMTP's host, port and user, and the sender's address, are not secrets:
+   `gitops` sets them beside the application, never here. A new key changes
+   `api_key` alone, so it goes in with `kv patch`, which keeps staging's
+   `redirect_to`; the old key is then deleted in Resend.
 
 ## Bootstrap, once: the first apply is local
 
