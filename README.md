@@ -23,7 +23,7 @@ for one never reaches another:
 |---|---|---|
 | `platform/` | the cluster's shared services | Vault Secrets Operator, per namespace |
 | `apps/` | the applications | Vault Secrets Operator, per namespace |
-| `ci/` | what the pipelines use (Proxmox, Cloudflare, RustFS, the runners' AppRole secret ID) | each repo's CI jobs, over JWT |
+| `ci/` | what the pipelines use (Proxmox, Cloudflare, RustFS, the runners' AppRole secret ID, the promoter App's IDs) | each repo's CI jobs, over JWT |
 | `ops/` | what only people use: UI logins, passwords in clear | the operator; **no machine has a policy on it** |
 
 There is no dynamic engine (`pki/`, `database/`); one is added when something
@@ -56,11 +56,18 @@ below), not in a KV engine.
 - **Applications:** one role, `apps`, for every namespace labelled
   `vault.0xc0.cc/apps: "true"`, and one templated policy
   (`policies/apps.hcl.tftpl`): each login reads `apps/<its own namespace>/*`,
-  the namespace taken from its service account's token. Plus one shared path
-  by name, `apps/shared/openobserve-rum`: OpenObserve's RUM client token, one
-  per organization and public by design. A new application
+  the namespace taken from its service account's token. Plus two shared paths
+  by name: `apps/shared/openobserve-rum`, OpenObserve's RUM client token, one
+  per organization and public by design; and `apps/shared/ghcr-pull`, keys
+  `username` and `password`, a token that can only read packages, which Vault
+  Secrets Operator turns into an `imagePullSecret` where an application's
+  images are private. A new application
   needs no change here, only the label on its namespace in `gitops`. Whoever
   can label a namespace there gives it its own `apps/` path, never another's.
+  An application's staging is a namespace of its own, `<app>-staging`, so it
+  reads `apps/<app>-staging/*` (`apps/payload-staging/*`), never prod's. The
+  shared database servers read each environment's `database` by name
+  (`policies/postgres.hcl`, `policies/mariadb.hcl`).
 - **Shared secrets: one secret, one path, never a copy.** A credential more
   than one consumer uses lives once, at `<engine>/shared/<name>`
   (`platform/shared/cloudflare`, `ci/shared/rustfs`), and each consumer's
@@ -156,7 +163,7 @@ offline, never in Vault, the cluster or a repo.
 ## How CI gets in
 
 No Vault credential is stored anywhere. Each job logs in with the OIDC token
-GitHub issues it (JWT auth, `hashicorp/vault-action`, in the reusable tofu
+GitHub issues it (JWT auth, `hashicorp/vault-action`, in the reusable
 workflows in `0xc0-labs/.github`):
 
 | Role | Who | Policy |
@@ -174,6 +181,19 @@ The other repos' CI reads its secrets with one role per repo:
 A plan and a real run read the same secrets, so one role serves both: what
 changes infrastructure still waits for the `production` environment's
 approval, not for Vault.
+
+An application repo's role is narrower, because it signs as a GitHub App
+that writes to `gitops` (Application delivery, below): only its `main`,
+through `.github`'s `release*` workflows on `main`. A pull request's jobs,
+which run third-party code, never log in with it.
+
+| Role | Who | Policy |
+|---|---|---|
+| `payload` | `payload`'s `main`, from `.github`'s `release*` workflows on `main`: its rc and release jobs | `ci-payload`: `ci/payload/*`, `ci/shared/github-promoter-app`, and signing with `github-promoter-app` |
+
+`ci/shared/github-promoter-app` holds the `0xc0-labs-promoter` App's IDs,
+keys `app_id` (its JWT's issuer) and `installation_id` (its installation on
+`gitops`, which a token is asked for). Its key is in Transit, never in `ci/`.
 
 A PR's plan refreshes every resource with `terraform-plan`, and fails on one
 that policy cannot read: an auth method or engine added here brings its read
@@ -198,35 +218,39 @@ value.
 | Key | Type | Used by | Policy |
 |---|---|---|---|
 | `github-runner-app` | `rsa-2048` | the CI VMs' JIT step, which signs the runner App's JWT before every job (infrastructure, the `github_runner` role) | `github-runner`: sign with it, SHA-256, nothing else |
+| `github-promoter-app` | `rsa-2048` | `payload`'s rc and release jobs, which sign the `0xc0-labs-promoter` App's JWT to open their promotion PR in `gitops`; later the other application repos | `ci-payload`: sign with it, SHA-256, nothing else |
 
-Importing the runner App's key, from the laptop over WARP: `vault transit
-import` takes it as base64 PKCS#8 DER. It goes from its source through a pipe
-and process substitution, never onto disk or the screen:
+Importing an App's key, from the laptop over WARP: `vault transit import`
+takes it as base64 PKCS#8 DER. It goes from its source through a pipe and
+process substitution, never onto disk or the screen:
 
 ```sh
 export VAULT_ADDR=https://vault.int.0xc0.cc
 mise exec -- vault login -no-print
 
-# From a .pem downloaded from the App's settings, deleted right after. From
-# the copy in ci/infrastructure/runner-app while it still exists, -in takes
+key=github-promoter-app   # or github-runner-app
+
+# From a .pem downloaded from the App's settings, deleted right after. For
+# the runner App, from the copy in ci/infrastructure/runner-app while it
+# still exists, -in takes
 # <(mise exec -- vault kv get -mount=ci -field=private_key infrastructure/runner-app)
 # instead of the file.
-mise exec -- vault transit import transit/keys/github-runner-app \
+mise exec -- vault transit import "transit/keys/$key" \
   @<(openssl pkcs8 -topk8 -nocrypt -outform DER -in ~/Downloads/<app>.private-key.pem | openssl base64 -A) \
   type=rsa-2048
 rm ~/Downloads/<app>.private-key.pem
 
 # Check it: type, not exportable, no deletion. Reading a Transit key shows
 # only its public half.
-mise exec -- vault read -format=json transit/keys/github-runner-app \
+mise exec -- vault read -format=json "transit/keys/$key" \
   | jq '.data | {type, exportable, deletion_allowed, latest_version}'
 
 rm -f ~/.vault-token
 ```
 
-A new key for the App goes in as a new version of the same key
-(`transit/keys/github-runner-app/import_version`, same input); the JIT step
-signs with the latest. The old one is then deleted in the App's settings.
+A new key for an App goes in as a new version of the same key
+(`transit/keys/<key>/import_version`, same input); whoever signs uses the
+latest. The old one is then deleted in the App's settings.
 
 ## AppRole: machines outside the cluster and CI
 
@@ -261,6 +285,62 @@ Infrastructure's pipeline carries it to the CI VMs on its next run of
 ```sh
 mise exec -- vault write auth/approle/role/github-runner/secret-id-accessor/destroy secret_id_accessor=<old>
 ```
+
+## Application delivery: what the operator writes
+
+An application with delivery (`payload` today) cuts an rc on every merge to
+its `main` and a release by hand, and each opens a PR in `gitops` that pins
+the environment's image. The PR is opened by the `0xc0-labs-promoter` App,
+installed on `gitops` alone, with contents and pull requests: the job signs
+the App's JWT through Transit with its repo's role (How CI gets in) and
+exchanges it for an installation token. The cluster pulls the private image
+with `apps/shared/ghcr-pull`, and staging runs in its own namespace with its
+own `apps/<app>-staging/` path.
+
+After the apply that adds them, from the laptop over WARP, every value on
+stdin as Writing or rotating a secret says:
+
+1. **The promoter App's key:** create the App, then import its key into
+   `transit/keys/github-promoter-app` (Transit, above, `key=github-promoter-app`).
+2. **Its IDs**, `ci/shared/github-promoter-app`. Not secrets, but written
+   here so a job reads them where it reads everything else:
+
+   ```sh
+   mise exec -- vault kv put -mount=ci shared/github-promoter-app \
+     app_id=<the App's ID> installation_id=<its installation on gitops>
+   mise exec -- vault kv metadata put -mount=ci \
+     -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" shared/github-promoter-app
+   ```
+
+3. **The pull token**, `apps/shared/ghcr-pull`: `username`, the account the
+   token belongs to, and `password`, a token that can only read packages,
+   shown once on GitHub's page:
+
+   ```sh
+   read -rs v && printf '%s' "$v" | mise exec -- vault kv put -mount=apps shared/ghcr-pull \
+     username=<its account> password=- ; unset v
+   mise exec -- vault kv metadata put -mount=apps \
+     -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" shared/ghcr-pull
+   ```
+
+4. **Staging's secrets**, `apps/<app>-staging/*`, the same keys as prod's
+   (for `payload`, `gitops`' `apps/payload` README). Generated here, so the
+   trailing newline is stripped:
+
+   ```sh
+   # The database role's password, hex because it goes into a URL: read by
+   # payload-staging, and by platform/postgres to create the role.
+   openssl rand -hex 24 | tr -d '\n' | mise exec -- vault kv put -mount=apps payload-staging/database password=-
+   mise exec -- vault kv metadata put -mount=apps \
+     -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" payload-staging/database
+
+   # PAYLOAD_SECRET, which signs sessions and tokens: never prod's.
+   openssl rand -base64 48 | tr -d '\n' | mise exec -- vault kv put -mount=apps payload-staging/app payload-secret=-
+   mise exec -- vault kv metadata put -mount=apps \
+     -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" payload-staging/app
+
+   rm -f ~/.vault-token
+   ```
 
 ## Bootstrap, once: the first apply is local
 

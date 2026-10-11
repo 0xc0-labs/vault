@@ -39,6 +39,20 @@ jwt_roles = {
     }
     policies = ["ci-infrastructure"]
   }
+
+  # Application delivery (operator decisions, 2026-10-10 and 2026-10-11): an
+  # application's rc and release jobs sign its promoter App's JWT through
+  # Transit. Bound to main and the release workflows, so a pull request's
+  # jobs, which run third-party code, never log in with it.
+  "payload" = {
+    claims_type = "glob"
+    bound_claims = {
+      repository       = "0xc0-labs/payload"
+      ref              = "refs/heads/main"
+      job_workflow_ref = "0xc0-labs/.github/.github/workflows/release*.yml@refs/heads/main"
+    }
+    policies = ["ci-payload"]
+  }
 }
 
 # One engine per trust boundary (operator decision, 2026-09-30; ops/ 2026-10-02).
