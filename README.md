@@ -111,8 +111,11 @@ line:
   (`openssl rand`, `pwgen`) ends in one: strip it with `tr -d '\n'`, or it
   becomes part of the secret (OpenObserve's first root password, 2026-10-01).
   `printf '%s'` adds none; a downloaded key file keeps its own, as it should.
-- `kv patch` changes one key and keeps the others; `kv put` writes a new
-  secret whole. Then `rotated_at`, so the next rotation knows how old it is.
+- `kv patch` changes the keys it names and keeps the others, on a path that
+  exists. `kv put` creates a path, or rewrites it whole: on an existing path
+  it drops every key it does not name. So a change to one key of an existing
+  secret is always `kv patch`. Then `rotated_at`, so the next rotation knows
+  how old it is.
 
 ```sh
 export VAULT_ADDR=https://vault.int.0xc0.cc
@@ -298,7 +301,8 @@ with `apps/shared/ghcr-pull`, and staging runs in its own namespace with its
 own `apps/<app>-staging/` path.
 
 After the apply that adds them, from the laptop over WARP, every value on
-stdin as Writing or rotating a secret says:
+stdin as Writing or rotating a secret says. Each `kv put` below creates its
+path; once it exists, a key changes with `kv patch`, never `kv put`:
 
 1. **The promoter App's key:** create the App, then import its key into
    `transit/keys/github-promoter-app` (Transit, above, `key=github-promoter-app`).
@@ -323,9 +327,19 @@ stdin as Writing or rotating a secret says:
      -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" shared/ghcr-pull
    ```
 
-4. **Staging's secrets**, `apps/<app>-staging/*`, the same keys as prod's
-   (for `payload`, `gitops`' `apps/payload` README). Generated here, so the
-   trailing newline is stripped:
+4. **Staging's secrets**, `apps/<app>-staging/*`. For `payload`, prod's keys
+   plus one that prod lacks:
+
+   | Path | Keys |
+   |---|---|
+   | `apps/payload-staging/database` | `password` |
+   | `apps/payload-staging/app` | `payload-secret`, and `seed-password` (staging alone) |
+
+   What each one is: `gitops`' `apps/payload/README.md`. Generated here, so
+   the trailing newline is stripped. `app` holds two keys, so `kv put` writes
+   one and `kv patch` adds the other: a `kv put` on it later would drop
+   `seed-password`, and the next seed of an empty database would fail. On an
+   `app` that already holds `payload-secret`, run only the `kv patch` line.
 
    ```sh
    # The database role's password, hex because it goes into a URL: read by
@@ -334,8 +348,12 @@ stdin as Writing or rotating a secret says:
    mise exec -- vault kv metadata put -mount=apps \
      -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" payload-staging/database
 
-   # PAYLOAD_SECRET, which signs sessions and tokens: never prod's.
+   # PAYLOAD_SECRET, which signs sessions and tokens: never prod's. kv put
+   # creates the path.
    openssl rand -base64 48 | tr -d '\n' | mise exec -- vault kv put -mount=apps payload-staging/app payload-secret=-
+   # The seed users' and the super-admin's password, SEED_PASSWORD. kv patch
+   # adds it and keeps payload-secret.
+   openssl rand -base64 24 | tr -d '\n' | mise exec -- vault kv patch -mount=apps payload-staging/app seed-password=-
    mise exec -- vault kv metadata put -mount=apps \
      -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" payload-staging/app
 
