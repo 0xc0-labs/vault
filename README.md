@@ -75,7 +75,12 @@ below), not in a KV engine.
   who shares what is written in the policies, and reviewed in their PRs.
   Rotating it is one write, and every consumer follows. The one copy across
   engines is Cloudflare's token, in `ci/shared` and `platform/shared`, written
-  together.
+  together. That token manages the DNS, the tunnels, Zero Trust and, since
+  workspace#88, R2. So the cluster's copy, which cert-manager and
+  external-dns read for the DNS alone, can also read and delete every bucket:
+  an accepted risk (the workspace's design). The applications never read it:
+  each reads its own bucket with a token scoped to it (Application delivery,
+  below).
 - **Who writes:** whoever holds the secret, the operator or a rotation job.
   Never this repo: it defines engines, roles and policies, never values.
 
@@ -298,7 +303,9 @@ installed on `gitops` alone, with contents and pull requests: the job signs
 the App's JWT through Transit with its repo's role (How CI gets in) and
 exchanges it for an installation token. The cluster pulls the private image
 with `apps/shared/ghcr-pull`, and staging runs in its own namespace with its
-own `apps/<app>-staging/` path.
+own `apps/<app>-staging/` path. Its files live in Cloudflare R2, one bucket
+per environment (`<namespace>-<purpose>`), read with a token scoped to that
+bucket at `apps/<namespace>/media`.
 
 After the apply that adds them, from the laptop over WARP, every value on
 stdin as Writing or rotating a secret says. Each `kv put` below creates its
@@ -359,6 +366,41 @@ path; once it exists, a key changes with `kv patch`, never `kv put`:
 
    rm -f ~/.vault-token
    ```
+
+5. **Each environment's media bucket**, `apps/<namespace>/media`: keys
+   `access_key_id` and `secret_access_key`, an R2 token scoped to that
+   bucket alone. Once `infrastructure`'s Cloudflare root has created the
+   buckets:
+
+   | Path | Bucket |
+   |---|---|
+   | `apps/payload/media` | `payload-media` |
+   | `apps/payload-staging/media` | `payload-staging-media` |
+
+   In the Cloudflare dashboard, R2, Manage API tokens: an API token with
+   "Object Read & Write", applied to that one bucket. One token per bucket,
+   never one for both. Cloudflare shows its Access Key ID and Secret Access
+   Key once; both go in together, each read with `read -rs` and passed
+   through process substitution (`printf` is a builtin, so neither reaches a
+   command line). The `apps` policy already reads them, under
+   `apps/<namespace>/*`.
+
+   ```sh
+   env=payload   # then again with env=payload-staging and its own token
+
+   # The Access Key ID, Enter, then the Secret Access Key, Enter.
+   read -rs id && read -rs key && mise exec -- vault kv put -mount=apps "$env/media" \
+     access_key_id=@<(printf '%s' "$id") secret_access_key=@<(printf '%s' "$key") ; unset id key
+   mise exec -- vault kv metadata put -mount=apps \
+     -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" "$env/media"
+
+   rm -f ~/.vault-token
+   ```
+
+   The S3 endpoint and the bucket's name are not secrets: `gitops` sets them
+   beside the application, never here. A new token changes both keys at once,
+   so it goes in with the same `kv put`, which rewrites the path whole; the
+   old token is then deleted in Cloudflare.
 
 ## Bootstrap, once: the first apply is local
 
