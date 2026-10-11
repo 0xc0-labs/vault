@@ -11,3 +11,10 @@ path "apps/data/{{identity.entity.aliases.${kubernetes_accessor}.metadata.servic
 path "apps/data/shared/openobserve-rum" {
   capabilities = ["read"]
 }
+
+# The read-only GHCR token the cluster pulls private images with: Vault
+# Secrets Operator turns it into an imagePullSecret in each namespace that
+# needs one. It can only read packages.
+path "apps/data/shared/ghcr-pull" {
+  capabilities = ["read"]
+}
