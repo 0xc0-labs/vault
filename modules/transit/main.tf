@@ -1,6 +1,4 @@
-# Keys live here and never leave: Vault signs or encrypts with them. The
-# module creates the engine only; a key is imported by the operator (README,
-# Transit), never written by OpenTofu.
+# The engine only: the operator imports its keys (README, Transit).
 resource "vault_mount" "main" {
   path        = var.path
   type        = "transit"

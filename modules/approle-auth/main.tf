@@ -9,9 +9,8 @@ resource "vault_auth_backend" "main" {
   }
 }
 
-# The role ID is the role's name: not a secret, so the machine's configuration
-# names it. The secret ID is, and the operator writes it by hand (README,
-# AppRole); it never expires on its own.
+# The role ID is the role's name, not a secret. The secret ID never expires on
+# its own: the operator writes and revokes it (README, AppRole).
 resource "vault_approle_auth_backend_role" "main" {
   for_each = var.roles
 
@@ -23,7 +22,6 @@ resource "vault_approle_auth_backend_role" "main" {
   secret_id_ttl      = 0
   secret_id_num_uses = 0
 
-  # Batch: one short-lived token per use, never renewed.
   token_type     = "batch"
   token_policies = each.value.policies
   token_ttl      = each.value.token_ttl

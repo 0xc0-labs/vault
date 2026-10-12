@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# Runs tofu against one environment, with the state's credentials read from
-# Vault (ci/shared/rustfs) into the environment only, never onto disk. Over
-# WARP, logged in to Vault (vault login -no-print), whose token the vault
-# provider uses too.
-# Usage: scripts/tofu <environment> <tofu args...>   e.g. scripts/tofu prod plan
+# Over WARP, logged in to Vault, whose token the vault provider uses too. The
+# state's credentials stay in the environment, never on disk.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

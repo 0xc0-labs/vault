@@ -1,8 +1,6 @@
-# Applies environments/prod after a merge to main, once the operator approves
-# the production environment.
 name: apply
 
-# Only when OpenTofu could change something. Run it by hand otherwise.
+# Only when OpenTofu could change something.
 on:
   push:
     branches: [main]
@@ -15,7 +13,6 @@ on:
       - '.github/workflows/apply.yml'
   workflow_dispatch:
 
-# id-token: the job logs in to Vault with GitHub's OIDC token.
 permissions:
   contents: read
   id-token: write
@@ -26,11 +23,9 @@ jobs:
     with:
       working-directory: environments/prod
       environment: production
-      # Read-write: only from main, inside the production environment, which
-      # waits for the operator's approval (policies/terraform.hcl).
+      # Read-write: main only, behind the operator's approval (policies/terraform.hcl).
       vault-addr: https://vault.int.0xc0.cc
       vault-role: terraform
-      # The state's credentials, from Vault.
       vault-secrets: |
         ci/data/shared/rustfs access_key_id | AWS_ACCESS_KEY_ID ;
         ci/data/shared/rustfs secret_access_key | AWS_SECRET_ACCESS_KEY ;
