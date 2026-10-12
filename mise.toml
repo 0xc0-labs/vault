@@ -1,5 +1,3 @@
-# Every tool this repo needs, pinned. CI installs only the ones its workflows
-# name; the laptop gets them all.
 [tools]
 opentofu       = "1.12.6"
 jq             = "1.8.2"
@@ -12,6 +10,4 @@ description = "Regenerate the inputs/outputs section of every module README"
 run = 'for m in modules/*/; do [ -d "$m" ] && terraform-docs markdown table --output-file README.md --output-mode inject "$m"; done'
 
 [settings]
-# Installs only what mise.lock records, every download checked against its
-# checksum, for this machine's platform. After any change above, `mise lock`.
 locked = true

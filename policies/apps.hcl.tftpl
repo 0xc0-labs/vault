@@ -1,20 +1,17 @@
-# The namespace comes from the login's entity alias, set by Vault from the
-# service account's token, never by the caller. A grant across namespaces goes
-# in the reader's own policy (mariadb.hcl).
+# Vault sets the namespace from the service account's token, never the
+# caller (README, Secrets).
 
 path "apps/data/{{identity.entity.aliases.${kubernetes_accessor}.metadata.service_account_namespace}}/*" {
   capabilities = ["read"]
 }
 
-# OpenObserve's RUM client token, one per organization: granted to every
-# application because it ships in every visitor's JavaScript anyway.
+# Public by design: OpenObserve's RUM client token ships in every visitor's
+# JavaScript.
 path "apps/data/shared/openobserve-rum" {
   capabilities = ["read"]
 }
 
-# The read-only GHCR token the cluster pulls private images with: Vault
-# Secrets Operator turns it into an imagePullSecret in each namespace that
-# needs one. It can only read packages.
+# It can only read packages: any namespace pulls private images with it.
 path "apps/data/shared/ghcr-pull" {
   capabilities = ["read"]
 }
