@@ -44,7 +44,7 @@ below), not in a KV engine.
   granted it by name, with the reason in its policy (`ci-infrastructure.hcl`).
 - **Paths:** `<engine>/<owner>/<name>`. The owner is the namespace, the repo
   under `ci/`, or the service under `ops/`, and it is what a policy scopes to.
-  Everything is lowercase and kebab-case: `platform/grafana/admin`,
+  Everything is lowercase and kebab-case: `platform/openobserve/root`,
   `ci/infrastructure/proxmox`.
 - **Keys inside a secret:** `snake_case`, so they map to a Kubernetes Secret
   as they are: `username`, `password`, `api_token`.
@@ -78,9 +78,10 @@ below), not in a KV engine.
   together. That token manages the DNS, the tunnels, Zero Trust and, since
   workspace#88, R2. So the cluster's copy, which cert-manager and
   external-dns read for the DNS alone, can also read and delete every bucket:
-  an accepted risk (the workspace's design). The applications never read it:
-  each reads its own bucket with a token scoped to it (Application delivery,
-  below).
+  an accepted risk (the workspace's `docs/accepted-risks.md`). The
+  applications never read it: each reads its own bucket with a token scoped
+  to it
+  ([Application delivery](#application-delivery-what-the-operator-writes)).
 - **Who writes:** whoever holds the secret, the operator or a rotation job.
   Never this repo: it defines engines, roles and policies, never values.
 
@@ -117,25 +118,37 @@ line:
   (`openssl rand`, `pwgen`) ends in one: strip it with `tr -d '\n'`, or it
   becomes part of the secret (OpenObserve's first root password, 2026-10-01).
   `printf '%s'` adds none; a downloaded key file keeps its own, as it should.
+- Stdin carries one value. Several in one write each go through process
+  substitution, `key=@<(printf '%s' "$v")`: `printf` is a builtin, so the
+  value reaches no command line.
 - `kv patch` changes the keys it names and keeps the others, on a path that
   exists. `kv put` creates a path, or rewrites it whole: on an existing path
   it drops every key it does not name. So a change to one key of an existing
   secret is always `kv patch`. Then `rotated_at`, so the next rotation knows
   how old it is.
 
+Every procedure that writes a secret, in this repo or another, links here
+and says only which keys at which path, and where each value comes from:
+
 ```sh
 export VAULT_ADDR=https://vault.int.0xc0.cc
 mise exec -- vault login -no-print
 
-# A key shown once on a web page (a new API token):
-read -rs v && printf '%s' "$v" | mise exec -- vault kv patch -mount=ci infrastructure/proxmox api_token=- ; unset v
-# A value generated here (a password): strip the trailing newline.
-openssl rand -base64 24 | tr -d '\n' | mise exec -- vault kv patch -mount=platform openobserve/root password=-
-# A key downloaded as a file (a GitHub App's private key):
-mise exec -- vault kv patch -mount=ci github/org-app private_key=- < ~/Downloads/app.private-key.pem && rm ~/Downloads/app.private-key.pem
+# One value, by where it comes from. On a new path, kv put instead of kv patch.
+# Shown once on a web page (an API token):
+read -rs v && printf '%s' "$v" | mise exec -- vault kv patch -mount=<engine> <owner>/<name> <key>=- ; unset v
+# Generated here (a password):
+openssl rand -base64 24 | tr -d '\n' | mise exec -- vault kv patch -mount=<engine> <owner>/<name> <key>=-
+# Downloaded as a file (a private key), deleted right after:
+mise exec -- vault kv patch -mount=<engine> <owner>/<name> <key>=- < ~/Downloads/<file> && rm ~/Downloads/<file>
 
-mise exec -- vault kv metadata put -mount=ci \
-  -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" infrastructure/proxmox
+# Several values that change together (a key ID and its secret): each read
+# in turn, Enter after each.
+read -rs a && read -rs b && mise exec -- vault kv put -mount=<engine> <owner>/<name> \
+  <key_a>=@<(printf '%s' "$a") <key_b>=@<(printf '%s' "$b") ; unset a b
+
+mise exec -- vault kv metadata put -mount=<engine> \
+  -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" <owner>/<name>
 
 rm -f ~/.vault-token
 ```
@@ -148,10 +161,10 @@ App key) is revoked there once the new one is in Vault and a run has used it.
 ## When the cluster or Vault is down
 
 Every secret lives in Vault and nowhere else, so with Vault down no pipeline
-runs (plan, apply, ansible, packer), nor do the local scripts. That is the
-accepted risk (operator decision, 2026-10-01). Besides Vault, the only copy
-of the secrets is PBS's backup of the RKE2 servers, whose Longhorn volumes
-hold Vault's Raft data.
+runs (plan, apply, ansible, packer), nor do the local scripts. That is an
+accepted risk (the workspace's `docs/accepted-risks.md`). Besides Vault, the
+only copy of the secrets is PBS's backup of the RKE2 servers, whose Longhorn
+volumes hold Vault's Raft data.
 
 1. **Sealed only** (the pods run, `vault status` says `Sealed true`), after a
    restart: unseal each pod, as `gitops/platform/vault/README.md` says, "After
@@ -229,14 +242,12 @@ value.
 | `github-runner-app` | `rsa-2048` | the CI VMs' JIT step, which signs the runner App's JWT before every job (infrastructure, the `github_runner` role) | `github-runner`: sign with it, SHA-256, nothing else |
 | `github-promoter-app` | `rsa-2048` | `payload`'s rc and release jobs, which sign the `0xc0-labs-promoter` App's JWT to open their promotion PR in `gitops`; later the other application repos | `ci-payload`: sign with it, SHA-256, nothing else |
 
-Importing an App's key, from the laptop over WARP: `vault transit import`
-takes it as base64 PKCS#8 DER. It goes from its source through a pipe and
-process substitution, never onto disk or the screen:
+Importing an App's key, logged in as
+[Writing or rotating a secret](#writing-or-rotating-a-secret) says: `vault
+transit import` takes it as base64 PKCS#8 DER. It goes from its source
+through a pipe and process substitution, never onto disk or the screen:
 
 ```sh
-export VAULT_ADDR=https://vault.int.0xc0.cc
-mise exec -- vault login -no-print
-
 key=github-promoter-app   # or github-runner-app
 
 # From a .pem downloaded from the App's settings, deleted right after. For
@@ -253,8 +264,6 @@ rm ~/Downloads/<app>.private-key.pem
 # only its public half.
 mise exec -- vault read -format=json "transit/keys/$key" \
   | jq '.data | {type, exportable, deletion_allowed, latest_version}'
-
-rm -f ~/.vault-token
 ```
 
 A new key for an App goes in as a new version of the same key
@@ -277,14 +286,14 @@ The secret ID is not bound to the machine's address: Vault sees every
 connection from Traefik. What a stolen one gives is what its policy says,
 only from inside the network, until it is revoked here.
 
-Writing it, or a new one, from the laptop over WARP, straight from Vault into
-`ci/`:
+Writing it, or a new one, as
+[Writing or rotating a secret](#writing-or-rotating-a-secret) says, the
+value straight from Vault into `ci/`. The path holds `secret_id` alone, so
+`kv put` rewrites it whole:
 
 ```sh
 mise exec -- vault write -f -field=secret_id auth/approle/role/github-runner/secret-id \
   | tr -d '\n' | mise exec -- vault kv put -mount=ci infrastructure/runner-approle secret_id=-
-mise exec -- vault kv metadata put -mount=ci \
-  -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" infrastructure/runner-approle
 ```
 
 Infrastructure's pipeline carries it to the CI VMs on its next run of
@@ -309,70 +318,48 @@ per environment (`<namespace>-<purpose>`), read with a token scoped to that
 bucket at `apps/<namespace>/media`. It sends email through Resend, with a key
 per environment at `apps/<namespace>/email`.
 
-After the apply that adds them, from the laptop over WARP, every value on
-stdin as Writing or rotating a secret says. Each `kv put` below creates its
-path; once it exists, a key changes with `kv patch`, never `kv put`:
+After the apply that adds them, each is written as
+[Writing or rotating a secret](#writing-or-rotating-a-secret) says; below,
+only which keys at which path, and where each value comes from. `kv put`
+creates a path; once it exists, a key changes with `kv patch`.
 
 1. **The promoter App's key:** create the App, then import its key into
-   `transit/keys/github-promoter-app` (Transit, above, `key=github-promoter-app`).
-2. **Its IDs**, `ci/shared/github-promoter-app`. Not secrets, but written
-   here so a job reads them where it reads everything else:
+   `transit/keys/github-promoter-app`
+   ([Transit](#transit-keys-that-never-leave-vault), `key=github-promoter-app`).
+2. **Its IDs**, `ci/shared/github-promoter-app`, written here so a job reads
+   them where it reads everything else. Not secrets, so on the command line
+   as they are:
 
-   ```sh
-   mise exec -- vault kv put -mount=ci shared/github-promoter-app \
-     app_id=<the App's ID> installation_id=<its installation on gitops>
-   mise exec -- vault kv metadata put -mount=ci \
-     -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" shared/github-promoter-app
-   ```
+   | Key | Value |
+   |---|---|
+   | `app_id` | the App's ID, on its settings page |
+   | `installation_id` | its installation on `gitops`, the number in the installation's URL |
 
-3. **The pull token**, `apps/shared/ghcr-pull`: `username`, the account the
-   token belongs to, and `password`, a token that can only read packages,
-   shown once on GitHub's page:
+3. **The pull token**, `apps/shared/ghcr-pull`:
 
-   ```sh
-   read -rs v && printf '%s' "$v" | mise exec -- vault kv put -mount=apps shared/ghcr-pull \
-     username=<its account> password=- ; unset v
-   mise exec -- vault kv metadata put -mount=apps \
-     -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" shared/ghcr-pull
-   ```
+   | Key | Value |
+   |---|---|
+   | `username` | the account the token belongs to; not a secret |
+   | `password` | a token that can only read packages, shown once on GitHub's page |
 
 4. **Staging's secrets**, `apps/<app>-staging/*`. For `payload`, prod's keys
-   plus one that prod lacks:
+   plus one that prod lacks, `seed-password`; what each one is: `gitops`'
+   `apps/payload/README.md`. All generated here:
 
-   | Path | Keys |
-   |---|---|
-   | `apps/payload-staging/database` | `password` |
-   | `apps/payload-staging/app` | `payload-secret`, and `seed-password` (staging alone) |
+   | Path | Key | Value |
+   |---|---|---|
+   | `apps/payload-staging/database` | `password` | `openssl rand -hex 24`: hex, because it goes into a URL |
+   | `apps/payload-staging/app` | `payload-secret` | `openssl rand -base64 48`, never prod's |
+   | `apps/payload-staging/app` | `seed-password` | `openssl rand -base64 24`, staging alone |
 
-   What each one is: `gitops`' `apps/payload/README.md`. Generated here, so
-   the trailing newline is stripped. `app` holds two keys, so `kv put` writes
-   one and `kv patch` adds the other: a `kv put` on it later would drop
+   `app` holds two keys: `kv put` creates it with `payload-secret`, then
+   `kv patch` adds `seed-password`. A `kv put` on it later would drop
    `seed-password`, and the next seed of an empty database would fail. On an
-   `app` that already holds `payload-secret`, run only the `kv patch` line.
+   `app` that already holds `payload-secret`, only the `kv patch`.
 
-   ```sh
-   # The database role's password, hex because it goes into a URL: read by
-   # payload-staging, and by platform/postgres to create the role.
-   openssl rand -hex 24 | tr -d '\n' | mise exec -- vault kv put -mount=apps payload-staging/database password=-
-   mise exec -- vault kv metadata put -mount=apps \
-     -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" payload-staging/database
-
-   # PAYLOAD_SECRET, which signs sessions and tokens: never prod's. kv put
-   # creates the path.
-   openssl rand -base64 48 | tr -d '\n' | mise exec -- vault kv put -mount=apps payload-staging/app payload-secret=-
-   # The seed users' and the super-admin's password, SEED_PASSWORD. kv patch
-   # adds it and keeps payload-secret.
-   openssl rand -base64 24 | tr -d '\n' | mise exec -- vault kv patch -mount=apps payload-staging/app seed-password=-
-   mise exec -- vault kv metadata put -mount=apps \
-     -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" payload-staging/app
-
-   rm -f ~/.vault-token
-   ```
-
-5. **Each environment's media bucket**, `apps/<namespace>/media`: keys
-   `access_key_id` and `secret_access_key`, an R2 token scoped to that
-   bucket alone. Once `infrastructure`'s Cloudflare root has created the
-   buckets:
+5. **Each environment's media bucket**, `apps/<namespace>/media`, keys
+   `access_key_id` and `secret_access_key`: an R2 token scoped to that bucket
+   alone. Once `infrastructure`'s Cloudflare root has created the buckets:
 
    | Path | Bucket |
    |---|---|
@@ -382,27 +369,10 @@ path; once it exists, a key changes with `kv patch`, never `kv put`:
    In the Cloudflare dashboard, R2, Manage API tokens: an API token with
    "Object Read & Write", applied to that one bucket. One token per bucket,
    never one for both. Cloudflare shows its Access Key ID and Secret Access
-   Key once; both go in together, each read with `read -rs` and passed
-   through process substitution (`printf` is a builtin, so neither reaches a
-   command line). The `apps` policy already reads them, under
-   `apps/<namespace>/*`.
-
-   ```sh
-   env=payload   # then again with env=payload-staging and its own token
-
-   # The Access Key ID, Enter, then the Secret Access Key, Enter.
-   read -rs id && read -rs key && mise exec -- vault kv put -mount=apps "$env/media" \
-     access_key_id=@<(printf '%s' "$id") secret_access_key=@<(printf '%s' "$key") ; unset id key
-   mise exec -- vault kv metadata put -mount=apps \
-     -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" "$env/media"
-
-   rm -f ~/.vault-token
-   ```
-
-   The S3 endpoint and the bucket's name are not secrets: `gitops` sets them
-   beside the application, never here. A new token changes both keys at once,
-   so it goes in with the same `kv put`, which rewrites the path whole; the
-   old token is then deleted in Cloudflare.
+   Key once; both go in one write, as several values. The S3 endpoint and the
+   bucket's name are not secrets: `gitops` sets them beside the application,
+   never here. A new token changes both keys at once, so it goes in with the
+   same `kv put`; the old token is then deleted in Cloudflare.
 
 6. **Each environment's email**, `apps/<namespace>/email`: a Resend API key,
    which the application sends with over SMTP. Once `0xc0.cc` is verified in
@@ -416,30 +386,11 @@ path; once it exists, a key changes with `kv patch`, never `kv put`:
    In Resend's dashboard, API Keys: one key per environment, with "Sending
    access" only, restricted to the domain `0xc0.cc`. Resend shows it once.
    `redirect_to` is the inbox every staging message goes to instead of its
-   recipient, so staging never mails a real person. Each value goes in with
-   `read -rs` and process substitution, as for the bucket. The `apps` policy
-   already reads them, under `apps/<namespace>/*`.
-
-   ```sh
-   # Prod: the API key, Enter.
-   read -rs key && mise exec -- vault kv put -mount=apps payload/email \
-     api_key=@<(printf '%s' "$key") ; unset key
-   mise exec -- vault kv metadata put -mount=apps \
-     -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" payload/email
-
-   # Staging: its own API key, Enter, then the redirect inbox, Enter.
-   read -rs key && read -rs to && mise exec -- vault kv put -mount=apps payload-staging/email \
-     api_key=@<(printf '%s' "$key") redirect_to=@<(printf '%s' "$to") ; unset key to
-   mise exec -- vault kv metadata put -mount=apps \
-     -custom-metadata=owner=operator -custom-metadata=rotated_at="$(date +%F)" payload-staging/email
-
-   rm -f ~/.vault-token
-   ```
-
-   SMTP's host, port and user, and the sender's address, are not secrets:
-   `gitops` sets them beside the application, never here. A new key changes
-   `api_key` alone, so it goes in with `kv patch`, which keeps staging's
-   `redirect_to`; the old key is then deleted in Resend.
+   recipient, so staging never mails a real person; staging's two go in one
+   write, as several values. SMTP's host, port and user, and the sender's
+   address, are not secrets: `gitops` sets them beside the application, never
+   here. A new key changes `api_key` alone, so it goes in with `kv patch`,
+   which keeps staging's `redirect_to`; the old key is then deleted in Resend.
 
 ## Bootstrap, once: the first apply is local
 
