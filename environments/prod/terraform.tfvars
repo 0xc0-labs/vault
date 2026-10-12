@@ -40,7 +40,8 @@ jwt_roles = {
   }
 
   # Application delivery: main's release jobs only, never a pull request's
-  # (README, How CI gets in; operator decisions, 2026-10-10 and 2026-10-11).
+  # (README, How CI gets in; operator decisions, 2026-10-10, 2026-10-11 and
+  # 2026-10-12).
   "payload" = {
     claims_type = "glob"
     bound_claims = {
@@ -49,6 +50,17 @@ jwt_roles = {
       job_workflow_ref = "0xc0-labs/.github/.github/workflows/release*.yml@refs/heads/main"
     }
     policies = ["ci-payload"]
+  }
+  # The role's name is the repo's: the release workflow logs in as
+  # github.event.repository.name.
+  "offby1.cc" = {
+    claims_type = "glob"
+    bound_claims = {
+      repository       = "0xc0-labs/offby1.cc"
+      ref              = "refs/heads/main"
+      job_workflow_ref = "0xc0-labs/.github/.github/workflows/release*.yml@refs/heads/main"
+    }
+    policies = ["ci-offby1-cc"]
   }
 }
 
