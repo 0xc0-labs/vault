@@ -78,9 +78,10 @@ below), not in a KV engine.
   together. That token manages the DNS, the tunnels, Zero Trust and, since
   workspace#88, R2. So the cluster's copy, which cert-manager and
   external-dns read for the DNS alone, can also read and delete every bucket:
-  an accepted risk (the workspace's `docs/accepted-risks.md`). The
-  applications never read it: each reads its own bucket with a token scoped
-  to it
+  an accepted risk (the workspace's
+  [`docs/accepted-risks.md`](https://github.com/0xc0-labs/workspace/blob/main/docs/accepted-risks.md)).
+  The applications never read it: each reads its own bucket with a token
+  scoped to it
   ([Application delivery](#application-delivery-what-the-operator-writes)).
 - **Who writes:** whoever holds the secret, the operator or a rotation job.
   Never this repo: it defines engines, roles and policies, never values.
@@ -162,9 +163,10 @@ App key) is revoked there once the new one is in Vault and a run has used it.
 
 Every secret lives in Vault and nowhere else, so with Vault down no pipeline
 runs (plan, apply, ansible, packer), nor do the local scripts. That is an
-accepted risk (the workspace's `docs/accepted-risks.md`). Besides Vault, the
-only copy of the secrets is PBS's backup of the RKE2 servers, whose Longhorn
-volumes hold Vault's Raft data.
+accepted risk (the workspace's
+[`docs/accepted-risks.md`](https://github.com/0xc0-labs/workspace/blob/main/docs/accepted-risks.md)).
+Besides Vault, the only copy of the secrets is PBS's backup of the RKE2
+servers, whose Longhorn volumes hold Vault's Raft data.
 
 1. **Sealed only** (the pods run, `vault status` says `Sealed true`), after a
    restart: unseal each pod, as `gitops/platform/vault/README.md` says, "After
