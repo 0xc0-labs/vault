@@ -5,8 +5,6 @@ module "github_jwt" {
   roles    = var.jwt_roles
 }
 
-# A .hcl.tftpl policy gets the Kubernetes auth accessor, to name a login's
-# entity alias (apps.hcl.tftpl).
 module "policies" {
   source = "../../modules/policy"
   for_each = merge(
@@ -26,7 +24,6 @@ module "kubernetes_auth" {
   roles = var.kubernetes_roles
 }
 
-# One KV engine per trust boundary (README.md, Secrets).
 module "kv" {
   source   = "../../modules/kv"
   for_each = var.kv_engines
@@ -35,14 +32,12 @@ module "kv" {
   description = each.value
 }
 
-# Keys that never leave Vault (README.md, Transit).
 module "transit" {
   source = "../../modules/transit"
 
   description = "Keys that never leave Vault: it signs and encrypts with them"
 }
 
-# Machines outside the cluster and CI (README.md, AppRole).
 module "approle_auth" {
   source = "../../modules/approle-auth"
 

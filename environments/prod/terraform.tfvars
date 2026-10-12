@@ -1,8 +1,7 @@
-# The reusable tofu workflows request vault-addr as the token's audience.
 jwt_audience = "https://vault.int.0xc0.cc"
 
-# Operator decision, 2026-09-30: a PR plans read-only from any ref; only main,
-# inside the approval-gated production environment, writes.
+# This repo's plan and apply (README, How CI gets in; operator decision,
+# 2026-09-30).
 jwt_roles = {
   "terraform-plan" = {
     bound_claims = {
@@ -21,8 +20,8 @@ jwt_roles = {
     policies = ["terraform"]
   }
 
-  # The other repos' CI (operator decision, 2026-10-01). Read-only, so one role
-  # serves plan and run; production's approval gates what changes anything.
+  # The other repos' CI, one role each for plan and run (README, How CI gets
+  # in; operator decision, 2026-10-01).
   "github" = {
     claims_type = "glob"
     bound_claims = {
@@ -40,10 +39,8 @@ jwt_roles = {
     policies = ["ci-infrastructure"]
   }
 
-  # Application delivery (operator decisions, 2026-10-10 and 2026-10-11): an
-  # application's rc and release jobs sign its promoter App's JWT through
-  # Transit. Bound to main and the release workflows, so a pull request's
-  # jobs, which run third-party code, never log in with it.
+  # Application delivery: main's release jobs only, never a pull request's
+  # (README, How CI gets in; operator decisions, 2026-10-10 and 2026-10-11).
   "payload" = {
     claims_type = "glob"
     bound_claims = {
@@ -55,7 +52,8 @@ jwt_roles = {
   }
 }
 
-# One engine per trust boundary (operator decision, 2026-09-30; ops/ 2026-10-02).
+# One engine per trust boundary (README, Secrets; operator decision,
+# 2026-09-30; ops/ 2026-10-02).
 kv_engines = {
   platform = "The cluster's shared services, one path per namespace, read by Vault Secrets Operator"
   apps     = "The applications, one path per namespace, read by Vault Secrets Operator"
@@ -110,8 +108,7 @@ kubernetes_roles = {
     service_accounts = ["vault-secrets"]
     policies         = ["postgres"]
   }
-  # Its policy reads only apps/<the login's namespace>/*, so a new
-  # application needs nothing here.
+  # A new application needs only this label on its namespace (README, Secrets).
   "apps" = {
     namespace_labels = { "vault.0xc0.cc/apps" = "true" }
     service_accounts = ["vault-secrets"]
@@ -119,11 +116,10 @@ kubernetes_roles = {
   }
 }
 
-# Machines outside the cluster and CI (operator decision, 2026-10-10). The role
-# ID is the role's name; the operator writes the secret ID.
+# Machines outside the cluster and CI (README, AppRole; operator decision,
+# 2026-10-10).
 approle_roles = {
-  # The CI VMs' JIT step: Vault signs the runner App's JWT, so the App's key
-  # never sits on them (infrastructure, the github_runner role).
+  # The CI VMs' JIT step (infrastructure, the github_runner role).
   "github-runner" = {
     policies  = ["github-runner"]
     token_ttl = 60

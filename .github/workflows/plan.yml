@@ -7,7 +7,6 @@ on:
   pull_request:
     branches: [main]
 
-# id-token: the job logs in to Vault with GitHub's OIDC token.
 permissions:
   contents: read
   pull-requests: write
@@ -22,7 +21,6 @@ jobs:
       # Read-only: any ref of this repo, so a PR can plan (policies/terraform-plan.hcl).
       vault-addr: https://vault.int.0xc0.cc
       vault-role: terraform-plan
-      # The state's credentials, from Vault.
       vault-secrets: |
         ci/data/shared/rustfs access_key_id | AWS_ACCESS_KEY_ID ;
         ci/data/shared/rustfs secret_access_key | AWS_SECRET_ACCESS_KEY ;
