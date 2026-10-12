@@ -1,6 +1,5 @@
-# No stored secret, but it can rewrite any policy, its own included: it is
-# effectively an admin, guarded by its role (main only, behind the operator's
-# approval).
+# Effectively an admin: it can rewrite any policy, its own included (README,
+# How CI gets in).
 
 path "sys/auth" {
   capabilities = ["read"]
@@ -34,7 +33,7 @@ path "sys/policy/*" {
   capabilities = ["create", "read", "update", "delete", "list"]
 }
 
-# RustFS, this repo's OpenTofu state: the only secret it reads.
+# This repo's OpenTofu state: the only secret it reads.
 path "ci/data/shared/rustfs" {
   capabilities = ["read"]
 }

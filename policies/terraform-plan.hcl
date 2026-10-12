@@ -1,5 +1,3 @@
-# A PR's plan: reads the configuration to diff it, and changes nothing.
-
 path "sys/auth" {
   capabilities = ["read"]
 }
@@ -12,9 +10,8 @@ path "auth/jwt/*" {
 path "auth/kubernetes/*" {
   capabilities = ["read", "list"]
 }
-# AppRole: each role's configuration and its role ID, which is not secret.
-# Never its secret IDs: no list of their accessors, and generating or looking
-# one up takes update.
+# A role ID is not secret. Its secret IDs stay out of reach: no list of their
+# accessors, and generating or looking one up takes update.
 path "auth/approle/role/+" {
   capabilities = ["read"]
 }
@@ -44,7 +41,7 @@ path "sys/policy/*" {
   capabilities = ["read", "list"]
 }
 
-# RustFS, this repo's OpenTofu state: the only secret it reads.
+# This repo's OpenTofu state: the only secret it reads.
 path "ci/data/shared/rustfs" {
   capabilities = ["read"]
 }
