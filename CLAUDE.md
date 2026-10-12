@@ -3,16 +3,14 @@
 The OpenTofu configuration of the cluster's Vault: auth methods and roles,
 policies, secret engines. Vault is deployed by `gitops` (`platform/vault`), so
 this repo is downstream of it: `.github → infrastructure → gitops → vault →
-offby1.cc and app-*`. The design is in the workspace's `docs/design.md`.
+offby1.cc and app-*`. The design is in the workspace's
+`docs/design/secrets.md`.
+
+The workspace's `CLAUDE.md` holds the rules every repo follows; these are
+this repo's alone.
 
 ## Hard rules
 
-- Everything written is in English: files, file names, comments, commits,
-  branches and PRs.
-- No work without an issue on the org project board. The PR links it
-  (`Closes #N` / `Refs owner/repo#N`) or the `issue` check fails.
-- OpenTofu only as modules: `modules/<name>/` for resources,
-  `environments/<env>/` for roots, which only call modules.
 - **No secret value ever goes into this repo, nor into Vault from here.** This
   repo configures Vault; secrets are written by whoever owns them. A policy
   for this repo's CI never grants access to stored secrets.
@@ -24,4 +22,3 @@ offby1.cc and app-*`. The design is in the workspace's `docs/design.md`.
   only the pipeline. Plans by hand go over WARP with a short-lived token.
 - The root token is for that bootstrap and recovery only; it is kept with the
   unseal keys, outside Vault, never revoked.
-- Tools come from `mise.toml`, pinned. Nothing system-wide.
