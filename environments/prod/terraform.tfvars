@@ -62,6 +62,15 @@ jwt_roles = {
     }
     policies = ["ci-offby1-cc"]
   }
+  "artistlabco.com" = {
+    claims_type = "glob"
+    bound_claims = {
+      repository       = "0xc0-labs/artistlabco.com"
+      ref              = "refs/heads/main"
+      job_workflow_ref = "0xc0-labs/.github/.github/workflows/release*.yml@refs/heads/main"
+    }
+    policies = ["ci-artistlabco-com"]
+  }
 }
 
 # One engine per trust boundary (README, Secrets; operator decision,
