@@ -7,3 +7,7 @@ path "platform/data/mariadb/*" {
 path "apps/data/mautic/database" {
   capabilities = ["read"]
 }
+
+path "apps/data/mautic-artistlabco-com/database" {
+  capabilities = ["read"]
+}
