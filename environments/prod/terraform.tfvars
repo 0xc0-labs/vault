@@ -135,6 +135,12 @@ kubernetes_roles = {
     service_accounts = ["vault-secrets"]
     policies         = ["apps"]
   }
+  # Payload's own identity over its tenants' secrets (README, Secrets).
+  "payload-tenants" = {
+    namespace_labels = { "vault.0xc0.cc/payload-tenants" = "true" }
+    service_accounts = ["payload"]
+    policies         = ["payload-tenants"]
+  }
 }
 
 # Machines outside the cluster and CI (README, AppRole; operator decision,

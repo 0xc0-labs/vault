@@ -68,6 +68,13 @@ below), not in a KV engine.
   reads `apps/<app>-staging/*` (`apps/payload-staging/*`), never prod's. The
   shared database servers read each environment's `database` by name
   (`policies/postgres.hcl`, `policies/mariadb.hcl`).
+- **Payload's tenants:** a second role, `payload-tenants`, for the namespaces
+  labelled `vault.0xc0.cc/payload-tenants: "true"` (`payload` and
+  `payload-staging`), service account `payload`, and the templated policy
+  `policies/payload-tenants.hcl.tftpl`: the login creates, reads, updates,
+  deletes and lists only `apps/<its own namespace>/tenants/*`, where the keys
+  a tenant enters in Payload's admin live. Nothing else of the namespace,
+  no `sudo`, and no destroying single versions. The `apps` role is unchanged.
 - **Shared secrets: one secret, one path, never a copy.** A credential more
   than one consumer uses lives once, at `<engine>/shared/<name>`
   (`platform/shared/cloudflare`, `ci/shared/rustfs`), and each consumer's
