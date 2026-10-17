@@ -4,10 +4,6 @@ path "platform/data/mariadb/*" {
 
 # Each application's database password, by name: the databases Job creates
 # the user with it.
-path "apps/data/mautic/database" {
-  capabilities = ["read"]
-}
-
 path "apps/data/mautic-artistlabco-com/database" {
   capabilities = ["read"]
 }
