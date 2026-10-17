@@ -1,0 +1,16 @@
+# Payload writes its tenants' secrets with its own login: only what lies
+# under tenants/ in its namespace, taken from the service account's token
+# (README, Secrets).
+
+path "apps/data/{{identity.entity.aliases.${kubernetes_accessor}.metadata.service_account_namespace}}/tenants/*" {
+  capabilities = ["create", "read", "update", "patch", "delete"]
+}
+
+# Deleting a tenant removes its whole tree, versions included.
+path "apps/metadata/{{identity.entity.aliases.${kubernetes_accessor}.metadata.service_account_namespace}}/tenants/*" {
+  capabilities = ["list", "read", "delete"]
+}
+
+path "apps/metadata/{{identity.entity.aliases.${kubernetes_accessor}.metadata.service_account_namespace}}/tenants" {
+  capabilities = ["list", "read", "delete"]
+}
