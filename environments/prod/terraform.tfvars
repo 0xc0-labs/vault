@@ -141,6 +141,13 @@ kubernetes_roles = {
     service_accounts = ["payload"]
     policies         = ["payload-tenants"]
   }
+  # A site's Strapi writes its integrations' keys with its own identity
+  # (README, Secrets).
+  "cms" = {
+    namespace_labels = { "vault.0xc0.cc/cms" = "true" }
+    service_accounts = ["cms"]
+    policies         = ["cms"]
+  }
 }
 
 # Machines outside the cluster and CI (README, AppRole; operator decision,
