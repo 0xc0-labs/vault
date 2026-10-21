@@ -75,6 +75,15 @@ below), not in a KV engine.
   deletes and lists only `apps/<its own namespace>/tenants/*`, where the keys
   a tenant enters in Payload's admin live. Nothing else of the namespace,
   no `sudo`, and no destroying single versions. The `apps` role is unchanged.
+- **A site's Strapi:** a third role, `cms`, for the namespaces labelled
+  `vault.0xc0.cc/cms: "true"` (`artistlabco-com` and
+  `artistlabco-com-staging`), service account `cms`, and the templated policy
+  `policies/cms.hcl.tftpl`: the login creates, reads, updates, deletes and
+  lists only `apps/<its own namespace>/integrations/*`, where the keys set in
+  Strapi's admin live, and removes their versions with them. Nothing else of
+  the namespace. A new site's Strapi gets it with the label on its namespace
+  in `gitops` and a service account named `cms`. Payload's role stays until
+  it is retired (workspace#204).
 - **Shared secrets: one secret, one path, never a copy.** A credential more
   than one consumer uses lives once, at `<engine>/shared/<name>`
   (`platform/shared/cloudflare`, `ci/shared/rustfs`), and each consumer's

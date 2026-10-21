@@ -1,0 +1,16 @@
+# A site's Strapi writes its integrations' keys with its own login: only what
+# lies under integrations/ in its namespace, taken from the service account's
+# token (README, Secrets).
+
+path "apps/data/{{identity.entity.aliases.${kubernetes_accessor}.metadata.service_account_namespace}}/integrations/*" {
+  capabilities = ["create", "read", "update", "patch", "delete"]
+}
+
+# Removing an integration removes its whole tree, versions included.
+path "apps/metadata/{{identity.entity.aliases.${kubernetes_accessor}.metadata.service_account_namespace}}/integrations/*" {
+  capabilities = ["list", "read", "delete"]
+}
+
+path "apps/metadata/{{identity.entity.aliases.${kubernetes_accessor}.metadata.service_account_namespace}}/integrations" {
+  capabilities = ["list", "read", "delete"]
+}
