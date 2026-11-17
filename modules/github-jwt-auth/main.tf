@@ -26,4 +26,8 @@ resource "vault_jwt_auth_backend_role" "main" {
   token_policies = each.value.policies
   token_ttl      = each.value.token_ttl
   token_max_ttl  = each.value.token_ttl
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
