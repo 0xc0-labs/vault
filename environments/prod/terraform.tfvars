@@ -42,15 +42,6 @@ jwt_roles = {
   # Application delivery: main's release jobs only, never a pull request's
   # (README, How CI gets in; operator decisions, 2026-10-10, 2026-10-11 and
   # 2026-10-12).
-  "payload" = {
-    claims_type = "glob"
-    bound_claims = {
-      repository       = "0xc0-labs/payload"
-      ref              = "refs/heads/main"
-      job_workflow_ref = "0xc0-labs/.github/.github/workflows/release*.yml@refs/heads/main"
-    }
-    policies = ["ci-payload"]
-  }
   # The role's name is the repo's: the release workflow logs in as
   # github.event.repository.name.
   "offby1.cc" = {
@@ -134,12 +125,6 @@ kubernetes_roles = {
     namespace_labels = { "vault.0xc0.cc/apps" = "true" }
     service_accounts = ["vault-secrets"]
     policies         = ["apps"]
-  }
-  # Payload's own identity over its tenants' secrets (README, Secrets).
-  "payload-tenants" = {
-    namespace_labels = { "vault.0xc0.cc/payload-tenants" = "true" }
-    service_accounts = ["payload"]
-    policies         = ["payload-tenants"]
   }
   # A site's Strapi writes its integrations' keys with its own identity
   # (README, Secrets).
