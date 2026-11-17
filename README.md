@@ -65,25 +65,17 @@ below), not in a KV engine.
   needs no change here, only the label on its namespace in `gitops`. Whoever
   can label a namespace there gives it its own `apps/` path, never another's.
   An application's staging is a namespace of its own, `<app>-staging`, so it
-  reads `apps/<app>-staging/*` (`apps/payload-staging/*`), never prod's. The
+  reads `apps/<app>-staging/*` (`apps/artistlabco-com-staging/*`), never prod's. The
   shared database servers read each environment's `database` by name
   (`policies/postgres.hcl`, `policies/mariadb.hcl`).
-- **Payload's tenants:** a second role, `payload-tenants`, for the namespaces
-  labelled `vault.0xc0.cc/payload-tenants: "true"` (`payload` and
-  `payload-staging`), service account `payload`, and the templated policy
-  `policies/payload-tenants.hcl.tftpl`: the login creates, reads, updates,
-  deletes and lists only `apps/<its own namespace>/tenants/*`, where the keys
-  a tenant enters in Payload's admin live. Nothing else of the namespace,
-  no `sudo`, and no destroying single versions. The `apps` role is unchanged.
-- **A site's Strapi:** a third role, `cms`, for the namespaces labelled
+- **A site's Strapi:** a second role, `cms`, for the namespaces labelled
   `vault.0xc0.cc/cms: "true"` (`artistlabco-com` and
   `artistlabco-com-staging`), service account `cms`, and the templated policy
   `policies/cms.hcl.tftpl`: the login creates, reads, updates, deletes and
   lists only `apps/<its own namespace>/integrations/*`, where the keys set in
   Strapi's admin live, and removes their versions with them. Nothing else of
   the namespace. A new site's Strapi gets it with the label on its namespace
-  in `gitops` and a service account named `cms`. Payload's role stays until
-  it is retired (workspace#204).
+  in `gitops` and a service account named `cms`.
 - **Shared secrets: one secret, one path, never a copy.** A credential more
   than one consumer uses lives once, at `<engine>/shared/<name>`
   (`platform/shared/cloudflare`, `ci/shared/rustfs`), and each consumer's
@@ -229,7 +221,6 @@ which run third-party code, never log in with it.
 
 | Role | Who | Policy |
 |---|---|---|
-| `payload` | `payload`'s `main`, from `.github`'s `release*` workflows on `main`: its rc and release jobs | `ci-payload`: `ci/payload/*`, `ci/shared/github-promoter-app`, and signing with `github-promoter-app` |
 | `offby1.cc` | `offby1.cc`'s `main`, from `.github`'s `release*` workflows on `main`: its release job, on every push | `ci-offby1-cc`: `ci/shared/github-promoter-app`, and signing with `github-promoter-app`; no `ci/offby1-cc/*`, as its release needs no secret of its own |
 | `artistlabco.com` | `artistlabco.com`'s `main`, from `.github`'s `release*` workflows on `main`: its rc and release jobs | `ci-artistlabco-com`: `ci/shared/github-promoter-app`, and signing with `github-promoter-app`; no `ci/artistlabco-com/*`, as it keeps no CI secret |
 
@@ -260,7 +251,7 @@ value.
 | Key | Type | Used by | Policy |
 |---|---|---|---|
 | `github-runner-app` | `rsa-2048` | the CI VMs' JIT step, which signs the runner App's JWT before every job (infrastructure, the `github_runner` role) | `github-runner`: sign with it, SHA-256, nothing else |
-| `github-promoter-app` | `rsa-2048` | `payload`'s and `artistlabco.com`'s rc and release jobs, and `offby1.cc`'s release job, which sign the `0xc0-labs-promoter` App's JWT to open their promotion PR in `gitops`; later the other application repos | `ci-payload`, `ci-artistlabco-com`, `ci-offby1-cc`: sign with it, SHA-256, nothing else |
+| `github-promoter-app` | `rsa-2048` | `artistlabco.com`'s rc and release jobs, and `offby1.cc`'s release job, which sign the `0xc0-labs-promoter` App's JWT to open their promotion PR in `gitops`; later the other application repos | `ci-artistlabco-com`, `ci-offby1-cc`: sign with it, SHA-256, nothing else |
 
 Importing an App's key, logged in as
 [Writing or rotating a secret](#writing-or-rotating-a-secret) says: `vault
@@ -326,17 +317,14 @@ mise exec -- vault write auth/approle/role/github-runner/secret-id-accessor/dest
 
 ## Application delivery: what the operator writes
 
-An application with delivery (`payload` today) cuts an rc on every merge to
+An application with delivery (`artistlabco.com` today) cuts an rc on every merge to
 its `main` and a release by hand, and each opens a PR in `gitops` that pins
 the environment's image. The PR is opened by the `0xc0-labs-promoter` App,
 installed on `gitops` alone, with contents and pull requests: the job signs
 the App's JWT through Transit with its repo's role (How CI gets in) and
 exchanges it for an installation token. The cluster pulls the private image
 with `apps/shared/ghcr-pull`, and staging runs in its own namespace with its
-own `apps/<app>-staging/` path. Its files live in Cloudflare R2, one bucket
-per environment (`<namespace>-<purpose>`), read with a token scoped to that
-bucket at `apps/<namespace>/media`. It sends email through Resend, with a key
-per environment at `apps/<namespace>/email`.
+own `apps/<app>-staging/` path.
 
 After the apply that adds them, each is written as
 [Writing or rotating a secret](#writing-or-rotating-a-secret) says; below,
@@ -362,55 +350,18 @@ creates a path; once it exists, a key changes with `kv patch`.
    | `username` | the account the token belongs to; not a secret |
    | `password` | a token that can only read packages, shown once on GitHub's page |
 
-4. **Staging's secrets**, `apps/<app>-staging/*`. For `payload`, prod's keys
-   plus one that prod lacks, `seed-password`; what each one is: `gitops`'
-   `apps/payload/README.md`. All generated here:
-
-   | Path | Key | Value |
-   |---|---|---|
-   | `apps/payload-staging/database` | `password` | `openssl rand -hex 24`: hex, because it goes into a URL |
-   | `apps/payload-staging/app` | `payload-secret` | `openssl rand -base64 48`, never prod's |
-   | `apps/payload-staging/app` | `seed-password` | `openssl rand -base64 24`, staging alone |
-
-   `app` holds two keys: `kv put` creates it with `payload-secret`, then
-   `kv patch` adds `seed-password`. A `kv put` on it later would drop
-   `seed-password`, and the next seed of an empty database would fail. On an
-   `app` that already holds `payload-secret`, only the `kv patch`.
-
-5. **Each environment's media bucket**, `apps/<namespace>/media`, keys
-   `access_key_id` and `secret_access_key`: an R2 token scoped to that bucket
-   alone. Once `infrastructure`'s Cloudflare root has created the buckets:
-
-   | Path | Bucket |
-   |---|---|
-   | `apps/payload/media` | `payload-media` |
-   | `apps/payload-staging/media` | `payload-staging-media` |
-
-   In the Cloudflare dashboard, R2, Manage API tokens: an API token with
-   "Object Read & Write", applied to that one bucket. One token per bucket,
-   never one for both. Cloudflare shows its Access Key ID and Secret Access
-   Key once; both go in one write, as several values. The S3 endpoint and the
-   bucket's name are not secrets: `gitops` sets them beside the application,
-   never here. A new token changes both keys at once, so it goes in with the
-   same `kv put`; the old token is then deleted in Cloudflare.
-
-6. **Each environment's email**, `apps/<namespace>/email`: a Resend API key,
-   which the application sends with over SMTP. Once `0xc0.cc` is verified in
-   Resend:
-
-   | Path | Keys |
-   |---|---|
-   | `apps/payload/email` | `api_key` |
-   | `apps/payload-staging/email` | `api_key`, and `redirect_to` (staging alone) |
-
-   In Resend's dashboard, API Keys: one key per environment, with "Sending
-   access" only, restricted to the domain `0xc0.cc`. Resend shows it once.
-   `redirect_to` is the inbox every staging message goes to instead of its
-   recipient, so staging never mails a real person; staging's two go in one
-   write, as several values. SMTP's host, port and user, and the sender's
-   address, are not secrets: `gitops` sets them beside the application, never
-   here. A new key changes `api_key` alone, so it goes in with `kv patch`,
-   which keeps staging's `redirect_to`; the old key is then deleted in Resend.
+4. **The application's own secrets**, `apps/<namespace>/*`, are listed in its
+   README in `gitops`, the one home of that fact: for `artistlabco.com`,
+   [`apps/artistlabco-com/README.md`](https://github.com/0xc0-labs/gitops/blob/main/apps/artistlabco-com/README.md),
+   "Before the first sync: the secrets".
+5. **The keys of its integrations** (the R2 token, the Resend key) are not
+   written here: they are entered in Strapi's admin, and Strapi writes them
+   under `apps/<namespace>/integrations/` with the `cms` role (Secrets,
+   above). What the operator creates in each service to enter there:
+   - **R2:** an API token with "Object Read & Write", applied to that
+     site's own buckets alone, never another environment's.
+   - **Resend:** one key per environment, with "Sending access" only,
+     restricted to the sending domain.
 
 ## Bootstrap, once: the first apply is local
 
