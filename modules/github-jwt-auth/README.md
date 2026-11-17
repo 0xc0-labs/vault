@@ -43,7 +43,7 @@ No modules.
 | <a name="input_audience"></a> [audience](#input\_audience) | The aud claim a token must carry: what the workflow asks GitHub for (vault-action's jwtGithubAudience). | `string` | n/a | yes |
 | <a name="input_issuer"></a> [issuer](#input\_issuer) | GitHub Actions' OIDC issuer: discovery URL and bound issuer. | `string` | `"https://token.actions.githubusercontent.com"` | no |
 | <a name="input_path"></a> [path](#input\_path) | Mount path of the auth method. | `string` | `"jwt"` | no |
-| <a name="input_roles"></a> [roles](#input\_roles) | Roles by name: the claims a token must match exactly, the policies it gets, and its TTL in seconds. | <pre>map(object({<br/>    bound_claims = map(string)<br/>    # "string": every claim must match exactly; "glob": * matches, in every<br/>    # claim of the role.<br/>    claims_type = optional(string, "string")<br/>    policies    = list(string)<br/>    token_ttl   = optional(number, 1200)<br/>  }))</pre> | n/a | yes |
+| <a name="input_roles"></a> [roles](#input\_roles) | Roles by name: the claims a token must match exactly, the policies it gets, and its TTL in seconds. | <pre>map(object({<br/>    bound_claims = map(string)<br/>    # "string": exact match; "glob": * matches, in every claim of the role.<br/>    claims_type = optional(string, "string")<br/>    policies    = list(string)<br/>    token_ttl   = optional(number, 1200)<br/>  }))</pre> | n/a | yes |
 
 ## Outputs
 
