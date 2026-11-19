@@ -13,3 +13,6 @@ path "apps/data/artistlabco-com-staging/database" {
 path "apps/data/plane/database" {
   capabilities = ["read"]
 }
+path "apps/data/matchmark/database" {
+  capabilities = ["read"]
+}
