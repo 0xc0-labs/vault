@@ -135,6 +135,13 @@ kubernetes_roles = {
     service_accounts = ["vault-secrets"]
     policies         = ["apps"]
   }
+  # The API signs agent tokens and logs in itself, apart from the namespace's
+  # vault-secrets account (README, Transit).
+  "matchmark-api" = {
+    namespace        = "matchmark"
+    service_accounts = ["api"]
+    policies         = ["matchmark-api"]
+  }
   # A site's Strapi writes its integrations' keys with its own identity
   # (README, Secrets).
   "cms" = {

@@ -247,12 +247,14 @@ through an `/etc/hosts` entry (infrastructure, the `github_runner` role).
 `transit/` holds keys Vault signs or encrypts with, non-exportable: whoever
 uses one gets a signature, never the key. OpenTofu creates the engine only.
 A key someone else issued is imported by the operator, like any other secret
-value.
+value; one Vault generates is created by the operator too. The pipeline's
+roles have nothing on `transit/keys/`.
 
 | Key | Type | Used by | Policy |
 |---|---|---|---|
 | `github-runner-app` | `rsa-2048` | the CI VMs' JIT step, which signs the runner App's JWT before every job (infrastructure, the `github_runner` role) | `github-runner`: sign with it, SHA-256, nothing else |
 | `github-promoter-app` | `rsa-2048` | `artistlabco.com`'s rc and release jobs, and the release jobs of `offby1.cc` and `matchmark`, which sign the `0xc0-labs-promoter` App's JWT to open their promotion PR in `gitops`; later the other application repos | `ci-artistlabco-com`, `ci-matchmark`, `ci-offby1-cc`: sign with it, SHA-256, nothing else |
+| `matchmark-agent-tokens` | `ed25519`, generated in Vault | Matchmark's API (Kubernetes auth role `matchmark-api`: namespace `matchmark`, service account `api`), which signs the agent tokens (EdDSA JWTs) and publishes the key's public half as a JWKS for the gateway | `matchmark-api`: sign with it, read the key, nothing else |
 
 Importing an App's key, logged in as
 [Writing or rotating a secret](#writing-or-rotating-a-secret) says: `vault
@@ -274,6 +276,18 @@ rm ~/Downloads/<app>.private-key.pem
 
 # Check it: type, not exportable, no deletion. Reading a Transit key shows
 # only its public half.
+mise exec -- vault read -format=json "transit/keys/$key" \
+  | jq '.data | {type, exportable, deletion_allowed, latest_version}'
+```
+
+A key Vault generates is created by the operator with no input, and Vault
+never shows its private half. It is non-exportable and not deletable by
+default; the check is the one above:
+
+```sh
+key=matchmark-agent-tokens
+
+mise exec -- vault write -f "transit/keys/$key" type=ed25519
 mise exec -- vault read -format=json "transit/keys/$key" \
   | jq '.data | {type, exportable, deletion_allowed, latest_version}'
 ```
