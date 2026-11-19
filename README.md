@@ -223,6 +223,7 @@ which run third-party code, never log in with it.
 |---|---|---|
 | `offby1.cc` | `offby1.cc`'s `main`, from `.github`'s `release*` workflows on `main`: its release job, on every push | `ci-offby1-cc`: `ci/shared/github-promoter-app`, and signing with `github-promoter-app`; no `ci/offby1-cc/*`, as its release needs no secret of its own |
 | `artistlabco.com` | `artistlabco.com`'s `main`, from `.github`'s `release*` workflows on `main`: its rc and release jobs | `ci-artistlabco-com`: `ci/shared/github-promoter-app`, and signing with `github-promoter-app`; no `ci/artistlabco-com/*`, as it keeps no CI secret |
+| `matchmark` | `matchmark`'s `main`, from `.github`'s `release*` workflows on `main`: its release job, on every push | `ci-matchmark`: `ci/shared/github-promoter-app`, and signing with `github-promoter-app`; no `ci/matchmark/*`, as its release needs no secret of its own |
 
 `ci/shared/github-promoter-app` holds the `0xc0-labs-promoter` App's IDs,
 keys `app_id` (its JWT's issuer) and `installation_id` (its installation on
@@ -251,7 +252,7 @@ value.
 | Key | Type | Used by | Policy |
 |---|---|---|---|
 | `github-runner-app` | `rsa-2048` | the CI VMs' JIT step, which signs the runner App's JWT before every job (infrastructure, the `github_runner` role) | `github-runner`: sign with it, SHA-256, nothing else |
-| `github-promoter-app` | `rsa-2048` | `artistlabco.com`'s rc and release jobs, and `offby1.cc`'s release job, which sign the `0xc0-labs-promoter` App's JWT to open their promotion PR in `gitops`; later the other application repos | `ci-artistlabco-com`, `ci-offby1-cc`: sign with it, SHA-256, nothing else |
+| `github-promoter-app` | `rsa-2048` | `artistlabco.com`'s rc and release jobs, and the release jobs of `offby1.cc` and `matchmark`, which sign the `0xc0-labs-promoter` App's JWT to open their promotion PR in `gitops`; later the other application repos | `ci-artistlabco-com`, `ci-matchmark`, `ci-offby1-cc`: sign with it, SHA-256, nothing else |
 
 Importing an App's key, logged in as
 [Writing or rotating a secret](#writing-or-rotating-a-secret) says: `vault

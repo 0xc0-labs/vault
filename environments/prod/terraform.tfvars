@@ -62,6 +62,15 @@ jwt_roles = {
     }
     policies = ["ci-artistlabco-com"]
   }
+  "matchmark" = {
+    claims_type = "glob"
+    bound_claims = {
+      repository       = "0xc0-labs/matchmark"
+      ref              = "refs/heads/main"
+      job_workflow_ref = "0xc0-labs/.github/.github/workflows/release*.yml@refs/heads/main"
+    }
+    policies = ["ci-matchmark"]
+  }
 }
 
 # One engine per trust boundary (README, Secrets; operator decision,
