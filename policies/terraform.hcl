@@ -33,12 +33,6 @@ path "sys/policy/*" {
   capabilities = ["create", "read", "update", "delete", "list"]
 }
 
-# The keys Vault generates (README, Transit). Imported keys are not declared
-# in this repo.
-path "transit/keys/*" {
-  capabilities = ["create", "read", "update", "delete", "list"]
-}
-
 # This repo's OpenTofu state: the only secret it reads.
 path "ci/data/shared/rustfs" {
   capabilities = ["read"]

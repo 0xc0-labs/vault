@@ -31,12 +31,6 @@ variable "kv_engines" {
   type        = map(string)
 }
 
-variable "transit_keys" {
-  description = "Transit keys Vault generates, by name, each with its type. Keys someone else issued are imported by the operator."
-  type        = map(string)
-  default     = {}
-}
-
 variable "approle_roles" {
   description = "AppRole roles, by name (also their role ID): the policies a login gets, and its token's TTL in seconds."
   type = map(object({

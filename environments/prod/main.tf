@@ -36,11 +36,6 @@ module "transit" {
   source = "../../modules/transit"
 
   description = "Keys that never leave Vault: it signs and encrypts with them"
-  keys        = var.transit_keys
-
-  # The terraform role's rule on transit/keys/* must exist before a key is
-  # created in the same run.
-  depends_on = [module.policies]
 }
 
 module "approle_auth" {

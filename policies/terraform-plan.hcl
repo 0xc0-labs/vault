@@ -41,11 +41,6 @@ path "sys/policy/*" {
   capabilities = ["read", "list"]
 }
 
-# A refresh reads each Transit key it manages: only the public half comes back.
-path "transit/keys/*" {
-  capabilities = ["read", "list"]
-}
-
 # This repo's OpenTofu state: the only secret it reads.
 path "ci/data/shared/rustfs" {
   capabilities = ["read"]

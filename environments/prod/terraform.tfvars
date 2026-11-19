@@ -151,12 +151,6 @@ kubernetes_roles = {
   }
 }
 
-# Keys Vault generates (README, Transit).
-transit_keys = {
-  # Signs Matchmark's agent tokens, EdDSA JWTs.
-  "matchmark-agent-tokens" = "ed25519"
-}
-
 # Machines outside the cluster and CI (README, AppRole; operator decision,
 # 2026-10-10).
 approle_roles = {
