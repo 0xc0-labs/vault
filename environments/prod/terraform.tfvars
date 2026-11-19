@@ -135,6 +135,13 @@ kubernetes_roles = {
     service_accounts = ["vault-secrets"]
     policies         = ["apps"]
   }
+  # The API signs agent tokens and logs in itself, apart from the namespace's
+  # vault-secrets account (README, Transit).
+  "matchmark-api" = {
+    namespace        = "matchmark"
+    service_accounts = ["api"]
+    policies         = ["matchmark-api"]
+  }
   # A site's Strapi writes its integrations' keys with its own identity
   # (README, Secrets).
   "cms" = {
@@ -142,6 +149,12 @@ kubernetes_roles = {
     service_accounts = ["cms"]
     policies         = ["cms"]
   }
+}
+
+# Keys Vault generates (README, Transit).
+transit_keys = {
+  # Signs Matchmark's agent tokens, EdDSA JWTs.
+  "matchmark-agent-tokens" = "ed25519"
 }
 
 # Machines outside the cluster and CI (README, AppRole; operator decision,
