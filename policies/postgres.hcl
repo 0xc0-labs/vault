@@ -16,3 +16,9 @@ path "apps/data/plane/database" {
 path "apps/data/matchmark/database" {
   capabilities = ["read"]
 }
+path "apps/data/matchmark/temporal-database" {
+  capabilities = ["read"]
+}
+path "apps/data/matchmark/temporal-visibility-database" {
+  capabilities = ["read"]
+}
