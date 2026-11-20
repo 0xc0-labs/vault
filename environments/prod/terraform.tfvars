@@ -142,6 +142,11 @@ kubernetes_roles = {
     service_accounts = ["api"]
     policies         = ["matchmark-api"]
   }
+  "matchmark-sandboxes" = {
+    namespace        = "matchmark-sandboxes"
+    service_accounts = ["vault-secrets"]
+    policies         = ["matchmark-sandboxes"]
+  }
   # A site's Strapi writes its integrations' keys with its own identity
   # (README, Secrets).
   "cms" = {

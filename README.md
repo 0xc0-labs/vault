@@ -68,6 +68,14 @@ below), not in a KV engine.
   reads `apps/<app>-staging/*` (`apps/artistlabco-com-staging/*`), never prod's. The
   shared database servers read each environment's `database` by name
   (`policies/postgres.hcl`, `policies/mariadb.hcl`).
+- **Matchmark's sandboxes:** a role of its own, `matchmark-sandboxes`
+  (namespace `matchmark-sandboxes`, service account `vault-secrets`), that
+  reads one path by name, `apps/matchmark/claude-subscription`, the Claude
+  subscription's token (key `oauth_token`), and nothing else
+  (`policies/matchmark-sandboxes.hcl`). The namespace is **not** labelled
+  `vault.0xc0.cc/apps`, on purpose: it holds no path of its own, and the
+  `apps` role does not admit it. The sandboxes run code a coding agent
+  writes, so they get the narrowest grant there is.
 - **A site's Strapi:** a second role, `cms`, for the namespaces labelled
   `vault.0xc0.cc/cms: "true"` (`artistlabco-com` and
   `artistlabco-com-staging`), service account `cms`, and the templated policy
