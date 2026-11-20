@@ -30,7 +30,7 @@ code a coding agent writes, can read one secret from Vault,
 
 ## Tasks
 
-- [ ] Policy
-- [ ] Role
-- [ ] README
-- [ ] Checks pass; the plan adds one policy and one role, nothing else
+- [x] Policy
+- [x] Role
+- [x] README
+- [x] Checks pass; the plan adds one policy and one role, nothing else
