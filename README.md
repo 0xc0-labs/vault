@@ -263,7 +263,7 @@ roles have nothing on `transit/keys/`.
 
 | Key | Type | Used by | Policy |
 |---|---|---|---|
-| `github-runner-app` | `rsa-2048` | the CI VMs' JIT step, which signs the runner App's JWT before every job (infrastructure, the `github_runner` role) | `github-runner`: sign with it, SHA-256, nothing else |
+| `github-runner-app` | `rsa-2048` | the CI VMs' JIT step, which signs the runner App's JWT before every job (infrastructure, the `github_runner` role); and the cluster's runner registrar (Kubernetes auth role `actions-runners`: namespace `actions-runner-controller`, service account `registrar`, 60 s tokens; 0xc0-labs/workspace#279), which does the same. The App's IDs are plain configuration in `infrastructure` (`ansible/inventory/group_vars/ci.yml`), not in Vault | `github-runner`: sign with it, SHA-256, nothing else |
 | `github-promoter-app` | `rsa-2048` | `artistlabco.com`'s rc and release jobs, and the release jobs of `offby1.cc` and `matchmark`, which sign the `0xc0-labs-promoter` App's JWT to open their promotion PR in `gitops`; later the other application repos | `ci-artistlabco-com`, `ci-matchmark`, `ci-offby1-cc`: sign with it, SHA-256, nothing else |
 | `matchmark-agent-tokens` | `ed25519`, generated in Vault | Matchmark's API (Kubernetes auth role `matchmark-api`: namespace `matchmark`, service account `api`), which signs the agent tokens (EdDSA JWTs) and publishes the key's public half as a JWKS for the gateway | `matchmark-api`: sign with it, read the key, nothing else |
 
