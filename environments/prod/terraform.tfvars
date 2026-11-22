@@ -142,6 +142,14 @@ kubernetes_roles = {
     service_accounts = ["api"]
     policies         = ["matchmark-api"]
   }
+  # The cluster's runner registrar signs the runner App's JWT with the policy
+  # the CI VMs' step has (README, Transit).
+  "actions-runners" = {
+    namespace        = "actions-runner-controller"
+    service_accounts = ["registrar"]
+    policies         = ["github-runner"]
+    token_ttl        = 60
+  }
   "matchmark-sandboxes" = {
     namespace        = "matchmark-sandboxes"
     service_accounts = ["vault-secrets"]
