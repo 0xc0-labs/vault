@@ -389,6 +389,20 @@ creates a path; once it exists, a key changes with `kv patch`.
    - **Resend:** one key per environment, with "Sending access" only,
      restricted to the sending domain.
 
+## The auction watcher's mail secret
+
+`auction-watch` (a CronJob that mails the operator when a server in Hetzner's
+auction meets the operator's limits) reads one secret, written as
+[Writing or rotating a secret](#writing-or-rotating-a-secret) says; below,
+only which keys at which path:
+
+`platform/auction-watch/mail`:
+
+| Key | Value |
+|---|---|
+| `api_key` | a Resend key with "Sending access" only, restricted to `0xc0.cc`, as for the keys above |
+| `to` | the address the mails go to; kept here so no repo holds it |
+
 ## Bootstrap, once: the first apply is local
 
 The CI can only log in once its auth method and roles exist. So the first

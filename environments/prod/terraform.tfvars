@@ -99,6 +99,11 @@ kubernetes_roles = {
     service_accounts = ["vault-secrets"]
     policies         = ["crowdsec"]
   }
+  "auction-watch" = {
+    namespace        = "auction-watch"
+    service_accounts = ["vault-secrets"]
+    policies         = ["auction-watch"]
+  }
   "traefik" = {
     namespace        = "traefik"
     service_accounts = ["vault-secrets"]
