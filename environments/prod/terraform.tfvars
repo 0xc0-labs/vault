@@ -124,6 +124,11 @@ kubernetes_roles = {
     service_accounts = ["vault-secrets"]
     policies         = ["openobserve-collector"]
   }
+  "monitoring" = {
+    namespace        = "monitoring"
+    service_accounts = ["vault-secrets"]
+    policies         = ["monitoring"]
+  }
   "mariadb" = {
     namespace        = "mariadb"
     service_accounts = ["vault-secrets"]

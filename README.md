@@ -403,6 +403,24 @@ only which keys at which path:
 | `api_key` | a Resend key with "Sending access" only, restricted to `0xc0.cc`, as for the keys above |
 | `to` | the address the mails go to; kept here so no repo holds it |
 
+## Grafana's admin login
+
+Grafana, in kube-prometheus-stack (namespace `monitoring`), reads its admin
+login through Vault Secrets Operator (`policies/monitoring.hcl`: `read` on
+`platform/grafana/*` alone). Written as
+[Writing or rotating a secret](#writing-or-rotating-a-secret) says; below,
+only which keys at which path:
+
+`platform/grafana/admin`:
+
+| Key | Value |
+|---|---|
+| `admin_user` | the login name; not a secret |
+| `admin_password` | the password, generated and stripped of its newline (`openssl rand -base64 32 \| tr -d '\n'`) |
+
+The chart's `admin.existingSecret` names them as values, `admin.userKey` and
+`admin.passwordKey`, so they follow the `snake_case` rule above.
+
 ## Bootstrap, once: the first apply is local
 
 The CI can only log in once its auth method and roles exist. So the first
