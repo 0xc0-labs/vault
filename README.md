@@ -415,11 +415,11 @@ only which keys at which path:
 
 | Key | Value |
 |---|---|
-| `admin-user` | the login name; not a secret |
-| `admin-password` | the password, generated and stripped of its newline (`openssl rand -base64 32 \| tr -d '\n'`) |
+| `admin_user` | the login name; not a secret |
+| `admin_password` | the password, generated and stripped of its newline (`openssl rand -base64 32 \| tr -d '\n'`) |
 
-The keys keep the dashes, unlike the `snake_case` rule above: they are the
-`userKey` and `passwordKey` the Grafana chart's `admin.existingSecret` names.
+The chart's `admin.existingSecret` names them as values, `admin.userKey` and
+`admin.passwordKey`, so they follow the `snake_case` rule above.
 
 ## Bootstrap, once: the first apply is local
 
