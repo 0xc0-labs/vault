@@ -421,6 +421,26 @@ only which keys at which path:
 The chart's `admin.existingSecret` names them as values, `admin.userKey` and
 `admin.passwordKey`, so they follow the `snake_case` rule above.
 
+## Loki's and Tempo's R2 keys
+
+Loki (namespace `loki`) and Tempo (namespace `tempo`) keep their data in
+Cloudflare R2 buckets and read its keys through Vault Secrets Operator
+(`policies/loki.hcl` and `policies/tempo.hcl`: each `read` on its own
+`platform/<name>/*` alone). Written as
+[Writing or rotating a secret](#writing-or-rotating-a-secret) says; below,
+only which keys at which paths: `platform/loki/r2` and `platform/tempo/r2`,
+the same three keys each:
+
+| Key | Value |
+|---|---|
+| `access_key_id` | the R2 API token's access key ID |
+| `secret_access_key` | the R2 API token's secret access key |
+| `endpoint` | the R2 S3 address, `https://<account id>.r2.cloudflarestorage.com`; not a secret, kept with its keys as `artistlabco.com`'s Strapi does |
+
+The token is one R2 API token per bucket, Object Read & Write: `loki-chunks`
+for Loki, `tempo-blocks` for Tempo, as `infrastructure`'s README ("Private
+buckets") says.
+
 ## Bootstrap, once: the first apply is local
 
 The CI can only log in once its auth method and roles exist. So the first
