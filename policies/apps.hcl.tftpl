@@ -5,12 +5,6 @@ path "apps/data/{{identity.entity.aliases.${kubernetes_accessor}.metadata.servic
   capabilities = ["read"]
 }
 
-# Public by design: OpenObserve's RUM client token ships in every visitor's
-# JavaScript.
-path "apps/data/shared/openobserve-rum" {
-  capabilities = ["read"]
-}
-
 # It can only read packages: any namespace pulls private images with it.
 path "apps/data/shared/ghcr-pull" {
   capabilities = ["read"]

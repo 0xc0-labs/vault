@@ -36,15 +36,15 @@ below), not in a KV engine.
   the machine the bcrypt or the htpasswd line (`platform/argocd/admin`,
   `platform/shared/ui-basic-auth`), the person the password (`ops/argocd/admin`,
   `ops/ui-basic-auth`). A secret a machine must read even though a person logs
-  in with it is a machine's (`platform/openobserve/root`: OpenObserve reads it
-  at its first start).
+  in with it is a machine's (`platform/grafana/admin`: Grafana reads its
+  admin login from it).
 - **One service, one path.** A secret belongs to the service it is for, not
   to whoever reads it: ArgoCD's is `platform/argocd/admin`, even though
   infrastructure's CI writes it into the cluster. A reader across a boundary is
   granted it by name, with the reason in its policy (`ci-infrastructure.hcl`).
 - **Paths:** `<engine>/<owner>/<name>`. The owner is the namespace, the repo
   under `ci/`, or the service under `ops/`, and it is what a policy scopes to.
-  Everything is lowercase and kebab-case: `platform/openobserve/root`,
+  Everything is lowercase and kebab-case: `platform/loki/r2`,
   `ci/infrastructure/proxmox`.
 - **Keys inside a secret:** `snake_case`, so they map to a Kubernetes Secret
   as they are: `username`, `password`, `api_token`.
@@ -56,9 +56,8 @@ below), not in a KV engine.
 - **Applications:** one role, `apps`, for every namespace labelled
   `vault.0xc0.cc/apps: "true"`, and one templated policy
   (`policies/apps.hcl.tftpl`): each login reads `apps/<its own namespace>/*`,
-  the namespace taken from its service account's token. Plus two shared paths
-  by name: `apps/shared/openobserve-rum`, OpenObserve's RUM client token, one
-  per organization and public by design; and `apps/shared/ghcr-pull`, keys
+  the namespace taken from its service account's token. Plus one shared path
+  by name: `apps/shared/ghcr-pull`, keys
   `username` and `password`, a token that can only read packages, which Vault
   Secrets Operator turns into an `imagePullSecret` where an application's
   images are private. A new application
@@ -136,7 +135,7 @@ line:
   on a web page. Never pasted into the command.
 - `key=-` stores stdin exactly, a trailing newline included. A generated value
   (`openssl rand`, `pwgen`) ends in one: strip it with `tr -d '\n'`, or it
-  becomes part of the secret (OpenObserve's first root password, 2026-10-01).
+  becomes part of the secret (a generated root password, 2026-10-01).
   `printf '%s'` adds none; a downloaded key file keeps its own, as it should.
 - Stdin carries one value. Several in one write each go through process
   substitution, `key=@<(printf '%s' "$v")`: `printf` is a builtin, so the
@@ -440,6 +439,13 @@ the same three keys each:
 The token is one R2 API token per bucket, Object Read & Write: `loki-chunks`
 for Loki, `tempo-blocks` for Tempo, as `infrastructure`'s README ("Private
 buckets") says.
+
+## Secrets no longer read
+
+OpenObserve and its collector left the cluster, and their roles and policies
+with them. The secrets at `platform/openobserve/*`,
+`platform/openobserve-collector/*` and `apps/shared/openobserve-rum` are read by
+nothing now; the operator may delete them (`vault kv metadata delete`).
 
 ## Bootstrap, once: the first apply is local
 
