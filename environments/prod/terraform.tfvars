@@ -129,6 +129,16 @@ kubernetes_roles = {
     service_accounts = ["vault-secrets"]
     policies         = ["monitoring"]
   }
+  "loki" = {
+    namespace        = "loki"
+    service_accounts = ["vault-secrets"]
+    policies         = ["loki"]
+  }
+  "tempo" = {
+    namespace        = "tempo"
+    service_accounts = ["vault-secrets"]
+    policies         = ["tempo"]
+  }
   "mariadb" = {
     namespace        = "mariadb"
     service_accounts = ["vault-secrets"]
