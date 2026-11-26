@@ -12,6 +12,16 @@ module "github_auth" {
   teams        = var.github_teams
 }
 
+module "oidc_auth" {
+  source = "../../modules/oidc-auth"
+
+  discovery_url = "https://0xc0.cloudflareaccess.com/cdn-cgi/access/sso/oidc/${var.oidc_client_id}"
+  client_id     = var.oidc_client_id
+  client_secret = var.oidc_client_secret
+  default_role  = "admins"
+  roles         = var.oidc_roles
+}
+
 module "policies" {
   source = "../../modules/policy"
   for_each = merge(

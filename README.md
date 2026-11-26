@@ -6,7 +6,7 @@ roles, policies, secret engines. Vault itself is deployed by `gitops`
 
 ```
 environments/prod/   the root: only calls modules
-modules/             github-jwt-auth, github-auth, kubernetes-auth, approle-auth, policy, kv, transit
+modules/             github-jwt-auth, github-auth, oidc-auth, kubernetes-auth, approle-auth, policy, kv, transit
 policies/            one ACL policy per file, named after it
 scripts/             tofu (local runs, credentials from Vault)
 ```
@@ -457,11 +457,30 @@ only which key at which path:
 It is a token of its own, never `platform/shared/cloudflare`: that one can
 edit the DNS, and stays external-dns' and cert-manager's.
 
-## Admins log in with GitHub
+## Admins log in through Cloudflare Access
 
-The members of the GitHub team `0xc0-labs/admins` log in to Vault with their
-own GitHub account, through the `github` auth method (`modules/github-auth`),
-and get the `admin` policy. The token lives 8 h and renews up to 24 h.
+People sign in to Vault through Cloudflare Access, with the `oidc` auth method
+(`modules/oidc-auth`): "Sign in with OIDC Provider" in the UI, or in a
+terminal, which opens the browser:
+
+```sh
+vault login -no-print -method=oidc
+```
+
+Cloudflare decides who gets in: its Access application for Vault admits the
+team `0xc0-labs/admins` and the operator's emails, and issues a token for
+nobody else. The role `admins` therefore binds the client ID as audience and
+nothing more, and gives the `admin` policy to every login it accepts. The
+token lives 8 h and renews up to 24 h. The client ID and secret come from
+`platform/vault/oidc` as `TF_VAR_oidc_client_id` and `TF_VAR_oidc_client_secret`
+(the pipeline's `vault-secrets`, and `scripts/tofu`).
+
+## Admins log in with GitHub: the fallback
+
+When Cloudflare is not reachable, the members of the GitHub team
+`0xc0-labs/admins` log in to Vault with their own GitHub account and a
+personal token, through the `github` auth method (`modules/github-auth`), and
+get the `admin` policy. The token lives 8 h and renews up to 24 h.
 
 ```sh
 # The personal access token needs the read:org scope; Vault asks GitHub for

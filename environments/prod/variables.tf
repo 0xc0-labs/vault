@@ -24,6 +24,27 @@ variable "github_teams" {
   default     = {}
 }
 
+variable "oidc_client_id" {
+  description = "The client ID of Cloudflare Access's OIDC application for Vault, from platform/vault/oidc."
+  type        = string
+  sensitive   = true
+}
+
+variable "oidc_client_secret" {
+  description = "The client secret of that application, from platform/vault/oidc."
+  type        = string
+  sensitive   = true
+}
+
+variable "oidc_roles" {
+  description = "The OIDC auth method's roles, by name: the policies a login gets and the redirect URIs it may use."
+  type = map(object({
+    policies              = list(string)
+    allowed_redirect_uris = list(string)
+  }))
+  default = {}
+}
+
 variable "kubernetes_roles" {
   description = "Kubernetes auth roles, one per namespace and named after it, or one for the namespaces carrying a label: the namespace or the labels, its service accounts, their audience, its policies and TTL."
   type = map(object({

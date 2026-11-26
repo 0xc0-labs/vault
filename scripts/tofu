@@ -15,6 +15,10 @@ AWS_ACCESS_KEY_ID="$(vault kv get -mount=ci -field=access_key_id shared/rustfs)"
 AWS_SECRET_ACCESS_KEY="$(vault kv get -mount=ci -field=secret_access_key shared/rustfs)"
 export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
 
+TF_VAR_oidc_client_id="$(vault kv get -mount=platform -field=client_id vault/oidc)"
+TF_VAR_oidc_client_secret="$(vault kv get -mount=platform -field=client_secret vault/oidc)"
+export TF_VAR_oidc_client_id TF_VAR_oidc_client_secret
+
 # Wait for CI to release the state lock rather than failing straight away.
 export TF_CLI_ARGS_plan="${TF_CLI_ARGS_plan:--lock-timeout=5m}"
 export TF_CLI_ARGS_apply="${TF_CLI_ARGS_apply:--lock-timeout=5m}"
