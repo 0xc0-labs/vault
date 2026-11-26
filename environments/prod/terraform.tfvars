@@ -82,10 +82,22 @@ kv_engines = {
   ops      = "What only people use: UI logins and passwords in clear. No machine has a policy on it"
 }
 
-# The people (README, Admins log in with GitHub).
+# The people (README, Admins log in with GitHub: the fallback).
 github_organization = "0xc0-labs"
 github_teams = {
   admins = ["admin"]
+}
+
+# Cloudflare Access decides who gets in; the role gives admin to every login it
+# accepts (README, Admins log in through Cloudflare Access).
+oidc_roles = {
+  admins = {
+    policies = ["admin"]
+    allowed_redirect_uris = [
+      "https://vault.int.0xc0.cc/ui/vault/auth/oidc/oidc/callback",
+      "http://localhost:8250/oidc/callback",
+    ]
+  }
 }
 
 # The service account is declared in gitops, <component>/vault-secrets.yaml.

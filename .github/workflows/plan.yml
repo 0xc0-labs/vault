@@ -24,3 +24,5 @@ jobs:
       vault-secrets: |
         ci/data/shared/rustfs access_key_id | AWS_ACCESS_KEY_ID ;
         ci/data/shared/rustfs secret_access_key | AWS_SECRET_ACCESS_KEY ;
+        platform/data/vault/oidc client_id | TF_VAR_oidc_client_id ;
+        platform/data/vault/oidc client_secret | TF_VAR_oidc_client_secret ;
