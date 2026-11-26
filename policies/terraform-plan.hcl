@@ -45,3 +45,9 @@ path "sys/policy/*" {
 path "ci/data/shared/rustfs" {
   capabilities = ["read"]
 }
+
+# The plan reads the oidc auth method's client ID and secret, as the apply does
+# (terraform.hcl).
+path "platform/data/vault/oidc" {
+  capabilities = ["read"]
+}
