@@ -94,6 +94,11 @@ kubernetes_roles = {
     service_accounts = ["vault-secrets"]
     policies         = ["external-dns"]
   }
+  "cloudflare-exporter" = {
+    namespace        = "cloudflare-exporter"
+    service_accounts = ["vault-secrets"]
+    policies         = ["cloudflare-exporter"]
+  }
   "crowdsec" = {
     namespace        = "crowdsec"
     service_accounts = ["vault-secrets"]
