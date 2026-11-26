@@ -440,6 +440,23 @@ The token is one R2 API token per bucket, Object Read & Write: `loki-chunks`
 for Loki, `tempo-blocks` for Tempo, as `infrastructure`'s README ("Private
 buckets") says.
 
+## The Cloudflare exporter's analytics token
+
+The Cloudflare exporter (namespace `cloudflare-exporter`) reads its token
+through Vault Secrets Operator (`policies/cloudflare-exporter.hcl`: `read` on
+`platform/data/cloudflare-exporter` alone). Written as
+[Writing or rotating a secret](#writing-or-rotating-a-secret) says; below,
+only which key at which path:
+
+`platform/cloudflare-exporter`:
+
+| Key | Value |
+|---|---|
+| `api_token` | a Cloudflare API token, read-only: Zone › Analytics › Read, Account › Account Analytics › Read, Zone › Zone › Read |
+
+It is a token of its own, never `platform/shared/cloudflare`: that one can
+edit the DNS, and stays external-dns' and cert-manager's.
+
 ## Secrets no longer read
 
 OpenObserve and its collector left the cluster, and their roles and policies
