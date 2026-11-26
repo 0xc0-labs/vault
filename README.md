@@ -6,7 +6,7 @@ roles, policies, secret engines. Vault itself is deployed by `gitops`
 
 ```
 environments/prod/   the root: only calls modules
-modules/             github-jwt-auth, kubernetes-auth, approle-auth, policy, kv, transit
+modules/             github-jwt-auth, github-auth, kubernetes-auth, approle-auth, policy, kv, transit
 policies/            one ACL policy per file, named after it
 scripts/             tofu (local runs, credentials from Vault)
 ```
@@ -456,6 +456,38 @@ only which key at which path:
 
 It is a token of its own, never `platform/shared/cloudflare`: that one can
 edit the DNS, and stays external-dns' and cert-manager's.
+
+## Admins log in with GitHub
+
+The members of the GitHub team `0xc0-labs/admins` log in to Vault with their
+own GitHub account, through the `github` auth method (`modules/github-auth`),
+and get the `admin` policy. The token lives 8 h and renews up to 24 h.
+
+```sh
+# The personal access token needs the read:org scope; Vault asks GitHub for
+# the user's organization and teams with it, and stores nothing of it.
+vault login -no-print -method=github
+```
+
+`policies/admin.hcl` grants full access to the data and metadata of the KV
+engines `platform/`, `apps/` and `ci/`, and read and list on the auth methods,
+the mounts, the policies and the roles. It grants no write on policies or
+roles (`sys/policies/acl/*`, `auth/*/role/*`) nor on the methods' mappings
+(`auth/*/map/*`): whoever can write either can grant themselves anything, so
+the boundary would not hold. Policies and roles change as code, by PR and a
+reviewed apply, which the admins team can approve. It grants nothing on
+`sys/seal`, `sys/unseal`, `sys/rekey*`, `sys/generate-root*` or `sys/raw`, nor
+on the root token: those stay the operator's.
+
+The OAuth Apps' secrets, keys `client_id` and `client_secret` each. The
+values are the operator's, written as
+[Writing or rotating a secret](#writing-or-rotating-a-secret) says:
+
+| Path | Login it serves | Read by |
+|---|---|---|
+| `ci/infrastructure/github-oauth-access` | Cloudflare Access's GitHub login | `ci-infrastructure`, which reads `ci/data/infrastructure/*` |
+| `platform/argocd/github-oauth` | Argo CD's Dex | role `argocd` (namespace `argocd`, service account `vault-secrets`), policy `argocd` |
+| `platform/grafana/github-oauth` | Grafana | role `monitoring`, whose policy reads `platform/data/grafana/*` |
 
 ## Secrets no longer read
 
