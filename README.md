@@ -470,12 +470,14 @@ vault login -method=github
 ```
 
 `policies/admin.hcl` grants full access to the data and metadata of the KV
-engines `platform/`, `apps/` and `ci/`; read on the auth methods, the mounts
-and the policies; and management of policies and roles. It grants nothing on
+engines `platform/`, `apps/` and `ci/`, and read and list on the auth methods,
+the mounts, the policies and the roles. It grants no write on policies or
+roles (`sys/policies/acl/*`, `auth/*/role/*`) nor on the methods' mappings
+(`auth/*/map/*`): whoever can write either can grant themselves anything, so
+the boundary would not hold. Policies and roles change as code, by PR and a
+reviewed apply, which the admins team can approve. It grants nothing on
 `sys/seal`, `sys/unseal`, `sys/rekey*`, `sys/generate-root*` or `sys/raw`, nor
-on the root token: those stay the operator's. A policy that can rewrite
-policies can rewrite this one, so the boundary holds for a member who works
-within it, not against one who does not; membership of `admins` is the trust.
+on the root token: those stay the operator's.
 
 The OAuth Apps' secrets, keys `client_id` and `client_secret` each. The
 values are the operator's, written as

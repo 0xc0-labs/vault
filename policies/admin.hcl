@@ -50,7 +50,9 @@ path "ci/destroy/*" {
   capabilities = ["update"]
 }
 
-# Read the auth methods, the mounts and the policies.
+# Read the auth methods, the mounts, the policies and the roles; write none of
+# them. A policy or a role that can be written can grant itself anything, so
+# they change as code, by PR and a reviewed apply.
 path "sys/auth" {
   capabilities = ["read"]
 }
@@ -60,18 +62,14 @@ path "sys/mounts" {
 path "sys/policies/acl" {
   capabilities = ["list"]
 }
-
-# Manage policies.
 path "sys/policies/acl/*" {
-  capabilities = ["create", "read", "update", "delete", "list"]
+  capabilities = ["read", "list"]
 }
-
-# Manage roles and read each method's configuration, never its secrets.
 path "auth/+/role" {
   capabilities = ["list"]
 }
 path "auth/+/role/*" {
-  capabilities = ["create", "read", "update", "delete", "list"]
+  capabilities = ["read", "list"]
 }
 path "auth/+/config" {
   capabilities = ["read"]
