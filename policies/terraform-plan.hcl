@@ -10,6 +10,9 @@ path "auth/jwt/*" {
 path "auth/kubernetes/*" {
   capabilities = ["read", "list"]
 }
+path "auth/github/*" {
+  capabilities = ["read", "list"]
+}
 # A role ID is not secret. Its secret IDs stay out of reach: no list of their
 # accessors, and generating or looking one up takes update.
 path "auth/approle/role/+" {
@@ -43,5 +46,11 @@ path "sys/policy/*" {
 
 # This repo's OpenTofu state: the only secret it reads.
 path "ci/data/shared/rustfs" {
+  capabilities = ["read"]
+}
+
+# The plan reads the oidc auth method's client ID and secret, as the apply does
+# (terraform.hcl).
+path "platform/data/vault/oidc" {
   capabilities = ["read"]
 }

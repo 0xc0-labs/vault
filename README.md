@@ -489,6 +489,17 @@ values are the operator's, written as
 | `platform/argocd/github-oauth` | Argo CD's Dex | role `argocd` (namespace `argocd`, service account `vault-secrets`), policy `argocd` |
 | `platform/grafana/github-oauth` | Grafana | role `monitoring`, whose policy reads `platform/data/grafana/*` |
 
+The OIDC applications Cloudflare Access issues for Vault, Grafana and Argo CD,
+keys `client_id` and `client_secret` each. Cloudflare issues the values and the
+operator carries them from infrastructure's OpenTofu state (its README has the
+commands), then writes them as above:
+
+| Path | Login it serves | Read by |
+|---|---|---|
+| `platform/vault/oidc` | Vault's own `oidc` auth method | `terraform` and `terraform-plan`, by name: this repo's pipeline, across a boundary |
+| `platform/grafana/oidc` | Grafana | role `monitoring`, whose policy reads `platform/data/grafana/*` (no grant of its own) |
+| `platform/argocd/oidc` | Argo CD | role `argocd`, policy `argocd` |
+
 ## Secrets no longer read
 
 OpenObserve and its collector left the cluster, and their roles and policies

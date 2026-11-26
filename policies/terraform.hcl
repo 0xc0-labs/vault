@@ -37,3 +37,10 @@ path "sys/policy/*" {
 path "ci/data/shared/rustfs" {
   capabilities = ["read"]
 }
+
+# The oidc auth method this repo configures takes its client ID and secret from
+# here (README, The OAuth Apps' secrets): a reader across a boundary, granted by
+# name.
+path "platform/data/vault/oidc" {
+  capabilities = ["read"]
+}
