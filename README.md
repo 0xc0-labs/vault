@@ -442,17 +442,18 @@ buckets") says.
 
 ## The Cloudflare exporter's analytics token
 
-The Cloudflare exporter (namespace `cloudflare-exporter`) reads its token
-through Vault Secrets Operator (`policies/cloudflare-exporter.hcl`: `read` on
-`platform/data/cloudflare-exporter` alone). Written as
+Grafana reads Cloudflare's analytics through a data source that asks the
+GraphQL API directly, with a token it reads through Vault Secrets Operator
+and the `monitoring` role, whose policy (`policies/monitoring.hcl`) reads
+`platform/data/grafana/*`: the token has no grant of its own. Written as
 [Writing or rotating a secret](#writing-or-rotating-a-secret) says; below,
 only which key at which path:
 
-`platform/cloudflare-exporter`:
+`platform/grafana/cloudflare`:
 
 | Key | Value |
 |---|---|
-| `api_token` | a Cloudflare API token, read-only: Zone › Analytics › Read, Account › Account Analytics › Read, Zone › Zone › Read |
+| `api_token` | a Cloudflare API token, read-only: Account › Account Analytics › Read on all accounts, Zone › Zone › Read and Zone › Analytics › Read on all zones |
 
 It is a token of its own, never `platform/shared/cloudflare`: that one can
 edit the DNS, and stays external-dns' and cert-manager's.
@@ -529,6 +530,10 @@ OAuth Apps' secrets, `platform/argocd/github-oauth` and
 `platform/grafana/github-oauth`, are read by nothing either. The operator may
 delete both paths, and the two GitHub OAuth Apps they belong to, "0xc0 Argo CD"
 and "0xc0 Grafana".
+
+The Cloudflare exporter left the cluster for a Grafana data source, and its
+role and policy with it. `platform/cloudflare-exporter` is read by nothing; the
+operator may delete it.
 
 ## Bootstrap, once: the first apply is local
 
