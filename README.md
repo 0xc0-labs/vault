@@ -498,15 +498,13 @@ reviewed apply, which the admins team can approve. It grants nothing on
 `sys/seal`, `sys/unseal`, `sys/rekey*`, `sys/generate-root*` or `sys/raw`, nor
 on the root token: those stay the operator's.
 
-The OAuth Apps' secrets, keys `client_id` and `client_secret` each. The
-values are the operator's, written as
+The GitHub OAuth App's secret that is still read, keys `client_id` and
+`client_secret`. The values are the operator's, written as
 [Writing or rotating a secret](#writing-or-rotating-a-secret) says:
 
 | Path | Login it serves | Read by |
 |---|---|---|
 | `ci/infrastructure/github-oauth-access` | Cloudflare Access's GitHub login | `ci-infrastructure`, which reads `ci/data/infrastructure/*` |
-| `platform/argocd/github-oauth` | Argo CD's Dex | role `argocd` (namespace `argocd`, service account `vault-secrets`), policy `argocd` |
-| `platform/grafana/github-oauth` | Grafana | role `monitoring`, whose policy reads `platform/data/grafana/*` |
 
 The OIDC applications Cloudflare Access issues for Vault, Grafana and Argo CD,
 keys `client_id` and `client_secret` each. Cloudflare issues the values and the
@@ -525,6 +523,12 @@ OpenObserve and its collector left the cluster, and their roles and policies
 with them. The secrets at `platform/openobserve/*`,
 `platform/openobserve-collector/*` and `apps/shared/openobserve-rum` are read by
 nothing now; the operator may delete them (`vault kv metadata delete`).
+
+Argo CD and Grafana sign people in through Cloudflare Access, so their GitHub
+OAuth Apps' secrets, `platform/argocd/github-oauth` and
+`platform/grafana/github-oauth`, are read by nothing either. The operator may
+delete both paths, and the two GitHub OAuth Apps they belong to, "0xc0 Argo CD"
+and "0xc0 Grafana".
 
 ## Bootstrap, once: the first apply is local
 
