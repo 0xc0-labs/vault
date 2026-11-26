@@ -507,8 +507,8 @@ The GitHub OAuth App's secret that is still read, keys `client_id` and
 |---|---|---|
 | `ci/infrastructure/github-oauth-access` | Cloudflare Access's GitHub login | `ci-infrastructure`, which reads `ci/data/infrastructure/*` |
 
-The OIDC applications Cloudflare Access issues for Vault, Grafana and Argo CD,
-keys `client_id` and `client_secret` each. Cloudflare issues the values and the
+The OIDC applications Cloudflare Access issues for Vault, Grafana, Argo CD and
+Headlamp, keys `client_id` and `client_secret` each. Cloudflare issues the values and the
 operator carries them from infrastructure's OpenTofu state (its README has the
 commands), then writes them as above:
 
@@ -517,6 +517,10 @@ commands), then writes them as above:
 | `platform/vault/oidc` | Vault's own `oidc` auth method | `terraform` and `terraform-plan`, by name: this repo's pipeline, across a boundary |
 | `platform/grafana/oidc` | Grafana | role `monitoring`, whose policy reads `platform/data/grafana/*` (no grant of its own) |
 | `platform/argocd/oidc` | Argo CD | role `argocd`, policy `argocd` |
+| `platform/headlamp/oidc` | Headlamp | role `headlamp`, policy `headlamp` |
+
+`kubectl` signs in through the same Access application, with the same client
+ID and no secret: nothing for it is stored here.
 
 ## Secrets no longer read
 
