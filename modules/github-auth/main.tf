@@ -6,7 +6,7 @@ resource "vault_github_auth_backend" "main" {
   token_ttl     = var.token_ttl
   token_max_ttl = var.token_max_ttl
 
-  # The people's way in: losing it takes a bootstrap with the root token.
+  # Recreating the mount revokes every token its logins issued.
   lifecycle {
     prevent_destroy = true
   }

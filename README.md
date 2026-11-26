@@ -466,7 +466,7 @@ and get the `admin` policy. The token lives 8 h and renews up to 24 h.
 ```sh
 # The personal access token needs the read:org scope; Vault asks GitHub for
 # the user's organization and teams with it, and stores nothing of it.
-vault login -method=github
+vault login -no-print -method=github
 ```
 
 `policies/admin.hcl` grants full access to the data and metadata of the KV

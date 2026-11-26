@@ -1,7 +1,7 @@
 # github-auth
 
 Vault's GitHub auth method, for people. A member logs in with a personal
-access token (`vault login -method=github`); Vault asks GitHub which
+access token (`vault login -no-print -method=github`); Vault asks GitHub which
 organization and teams the token's owner belongs to, and grants the policies
 mapped to those teams.
 
