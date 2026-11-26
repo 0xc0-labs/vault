@@ -10,6 +10,9 @@ path "auth/jwt/*" {
 path "auth/kubernetes/*" {
   capabilities = ["read", "list"]
 }
+path "auth/github/*" {
+  capabilities = ["read", "list"]
+}
 # A role ID is not secret. Its secret IDs stay out of reach: no list of their
 # accessors, and generating or looking one up takes update.
 path "auth/approle/role/+" {
