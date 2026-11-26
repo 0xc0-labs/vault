@@ -82,8 +82,19 @@ kv_engines = {
   ops      = "What only people use: UI logins and passwords in clear. No machine has a policy on it"
 }
 
+# The people (README, Admins log in with GitHub).
+github_organization = "0xc0-labs"
+github_teams = {
+  admins = ["admin"]
+}
+
 # The service account is declared in gitops, <component>/vault-secrets.yaml.
 kubernetes_roles = {
+  "argocd" = {
+    namespace        = "argocd"
+    service_accounts = ["vault-secrets"]
+    policies         = ["argocd"]
+  }
   "cert-manager" = {
     namespace        = "cert-manager"
     service_accounts = ["vault-secrets"]

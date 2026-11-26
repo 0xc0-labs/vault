@@ -5,6 +5,13 @@ module "github_jwt" {
   roles    = var.jwt_roles
 }
 
+module "github_auth" {
+  source = "../../modules/github-auth"
+
+  organization = var.github_organization
+  teams        = var.github_teams
+}
+
 module "policies" {
   source = "../../modules/policy"
   for_each = merge(

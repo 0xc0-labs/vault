@@ -13,6 +13,17 @@ variable "jwt_roles" {
   }))
 }
 
+variable "github_organization" {
+  description = "The GitHub organization whose members may log in to Vault."
+  type        = string
+}
+
+variable "github_teams" {
+  description = "The GitHub auth method's teams, by slug: the policies a member gets."
+  type        = map(list(string))
+  default     = {}
+}
+
 variable "kubernetes_roles" {
   description = "Kubernetes auth roles, one per namespace and named after it, or one for the namespaces carrying a label: the namespace or the labels, its service accounts, their audience, its policies and TTL."
   type = map(object({
